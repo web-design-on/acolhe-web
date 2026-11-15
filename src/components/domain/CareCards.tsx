@@ -38,7 +38,7 @@ export function PrescriptionCard({ prescription, onCheckAvailability }: Prescrip
         <Button variant="secondary" size="sm" icon={<Download size={16} />} onClick={() => window.print()}>Baixar</Button>
         {onCheckAvailability && prescription.status === "ativa" && (
           <Button className={styles.bottom} variant="secondary" size="sm" icon={<Store size={16} />} onClick={onCheckAvailability}>
-            Vêr Disponibilidade
+            Ver Disponibilidade
           </Button>
         )}
       </div>
