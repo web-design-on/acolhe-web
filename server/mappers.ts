@@ -1,7 +1,3 @@
-/**
- * Converte linhas do banco para os formatos que o portal espera (src/types).
- * Também calcula o que não é guardado: iniciais, idade e adesão aos remédios.
- */
 import { prisma } from "./db.js";
 import type * as Db from "./generated/prisma/client.js";
 import type {
@@ -15,22 +11,19 @@ const opt = <T>(value: T | null) => value ?? undefined;
 const iso = (date: Date) => date.toISOString();
 const DAY = 24 * 60 * 60_000;
 
-// ─── Datas no fuso de São Paulo (UTC-3, sem horário de verão) ────────────────
+// São Paulo: UTC-3, sem horário de verão.
 
 const SP_OFFSET = 3 * 60 * 60_000;
 
-/** Início e fim do dia em São Paulo. offsetDays = -1 é ontem. */
 export function saoPauloDay(offsetDays = 0) {
   const sp = new Date(Date.now() - SP_OFFSET);
   const start = new Date(Date.UTC(sp.getUTCFullYear(), sp.getUTCMonth(), sp.getUTCDate() + offsetDays) + SP_OFFSET);
   return { start, end: new Date(start.getTime() + DAY) };
 }
 
-// ─── Adesão (doses tomadas / doses previstas até agora) ──────────────────────
-
 const percent = (taken: number, scheduled: number) => (scheduled ? Math.round((taken / scheduled) * 100) : 100);
 
-/** Adesão dos últimos `days` dias, agrupada por `by`. Sem doses previstas conta como 100% (nada perdido). */
+// Sem doses previstas conta como 100% (nada foi perdido).
 async function adherenceBy(by: "patientId" | "medicationId", ids: string[], days = 30) {
   const groups = await prisma.medicationDose.groupBy({
     by: [by, "status"],
@@ -67,9 +60,6 @@ export async function adherenceSummary(patientId: string, days: number): Promise
   };
 }
 
-// ─── Usuário ─────────────────────────────────────────────────────────────────
-
-/** Ids das pessoas cuidadas que o usuário acompanha. */
 export async function patientIdsOf(user: Db.User) {
   if (user.role === "medico") {
     return (await prisma.doctorPatient.findMany({ where: { doctorId: user.id }, select: { patientId: true } })).map((d) => d.patientId);
@@ -80,7 +70,6 @@ export async function patientIdsOf(user: Db.User) {
   return (await prisma.patient.findMany({ where: { userId: user.id }, select: { id: true } })).map((p) => p.id);
 }
 
-/** No portal o cuidador aparece como "familiar". */
 export async function toUser(user: Db.User): Promise<User> {
   return {
     id: user.id,
@@ -94,8 +83,6 @@ export async function toUser(user: Db.User): Promise<User> {
     specialty: opt(user.specialty),
   };
 }
-
-// ─── Pessoa cuidada e rede ───────────────────────────────────────────────────
 
 export async function toPatients(patients: Db.Patient[]): Promise<Patient[]> {
   const adherence = await adherenceBy("patientId", patients.map((p) => p.id));
@@ -141,8 +128,6 @@ export function toCaregiver(c: Db.Caregiver): Caregiver {
   };
 }
 
-// ─── Alertas ─────────────────────────────────────────────────────────────────
-
 export const alertInclude = { recipients: { include: { caregiver: { select: { order: true } } } } } as const;
 type AlertRow = Db.Prisma.EmergencyAlertGetPayload<{ include: typeof alertInclude }>;
 
@@ -167,8 +152,6 @@ export function toAlert(a: AlertRow): EmergencyAlert {
     location: opt(a.location),
   };
 }
-
-// ─── Remédios, rotina, consultas e receitas ──────────────────────────────────
 
 export async function toMedications(medications: Db.Medication[]): Promise<Medication[]> {
   const adherence = await adherenceBy("medicationId", medications.map((m) => m.id));
@@ -213,7 +196,7 @@ export function toPrescription(rx: WithDoctor<Db.Prescription> & { items: Db.Pre
     items: [...rx.items].sort((a, b) => a.position - b.position).map((item) => ({
       medication: item.medication, dose: item.dose, frequency: item.frequency, duration: item.duration,
       suggestConfirmation: item.suggestConfirmation || undefined,
-      // Receitas salvas sem código (ex.: criadas antes do catálogo) ganham o código na leitura.
+      // Receitas antigas, sem código, ganham o código na leitura.
       catmatCode: item.catmatCode ?? findSusMedication(item.medication, item.dose)?.catmatCode,
     })),
     instructions: rx.instructions,
@@ -222,9 +205,6 @@ export function toPrescription(rx: WithDoctor<Db.Prescription> & { items: Db.Pre
   };
 }
 
-// ─── Regras de cuidado ───────────────────────────────────────────────────────
-
-/** Regras salvas, ou o padrão sugerido (o mesmo de src/services/careRulesService.ts). */
 export async function careRulesOf(patientId: string): Promise<CareRules> {
   const [rules, medications] = await Promise.all([
     prisma.careRules.findUnique({ where: { patientId } }),

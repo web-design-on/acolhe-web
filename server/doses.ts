@@ -1,18 +1,9 @@
-/**
- * Criação das doses a partir dos horários dos remédios.
- *
- * Regra (o back-end do app deve seguir a mesma, veja o README):
- * - Ao listar doses, adesão ou remédios, cria as doses que faltam dos últimos 30 dias até o fim de hoje,
- *   uma por remédio e horário (horário de São Paulo), entre medications.starts_at e medications.ends_at.
- * - A dose adiada não é recriada no horário original (medication_doses.original_scheduled_at).
- * - Dose "pendente" ou "adiado" que passou do horário mais a tolerância vira "atrasado".
- * A regra única (medication_id, scheduled_at) impede duplicar se os dois back-ends criarem ao mesmo tempo.
- */
+// Ao listar doses, cria as que faltam nos últimos 30 dias (horário de São Paulo, entre starts_at e ends_at).
+// O back-end do app segue a mesma regra; a regra única (medication_id, scheduled_at) evita duplicar.
 import { prisma } from "./db.js";
 import { saoPauloDay } from "./mappers.js";
 
 const WINDOW_DAYS = 30;
-/** Minutos sem confirmação até a dose contar como atrasada (o padrão das regras de cuidado). */
 const DEFAULT_TOLERANCE = 30;
 
 export async function ensureDoses(patientId: string) {

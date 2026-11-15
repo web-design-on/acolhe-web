@@ -5,17 +5,13 @@ import { prisma } from "../db.js";
 import { alertInclude, toAlert, toCaregiver, toPatient } from "../mappers.js";
 import type { AlertContext } from "../../src/types/index.js";
 
-/**
- * Alertas de emergência vistos pelo portal. Quem dispara e cancela o SOS é o back-end do app.
- * As rotas /alerts/:id são públicas: são abertas pelo link do WhatsApp/SMS, sem login.
- * O id do alerta é longo e aleatório, então só quem recebeu o link consegue abrir.
- */
+// /alerts/:id é público (link do WhatsApp/SMS); o id longo e aleatório funciona como chave.
 export const alertRoutes = new Hono<AppEnv>();
 
 const ACTIVE = ["enviado", "assumido"] as const;
 const DEMO_ID = "a-demo";
 
-/** "/alerta/demo" usa um alerta de demonstração da Dona Maria, recriado quando o anterior foi encerrado. */
+// "demo" recria o alerta de demonstração quando o anterior foi encerrado.
 async function resolveAlertId(id: string) {
   if (id !== "demo") return id;
   const existing = await prisma.emergencyAlert.findUnique({ where: { id: DEMO_ID } });
@@ -50,8 +46,6 @@ function assertActive(status: string) {
   if (!(ACTIVE as readonly string[]).includes(status)) throw new HTTPException(409, { message: "Este alerta já foi encerrado." });
 }
 
-// ─── Portal (com login) ──────────────────────────────────────────────────────
-
 alertRoutes.get("/patients/:id/alerts", requireAuth, async (c) => {
   const patientId = c.req.param("id");
   await assertPatientAccess(c, patientId);
@@ -59,7 +53,6 @@ alertRoutes.get("/patients/:id/alerts", requireAuth, async (c) => {
   return c.json(list.map(toAlert));
 });
 
-/** Alerta em andamento (enviado ou assumido), se existir. */
 alertRoutes.get("/patients/:id/alerts/active", requireAuth, async (c) => {
   const patientId = c.req.param("id");
   await assertPatientAccess(c, patientId);
@@ -69,11 +62,9 @@ alertRoutes.get("/patients/:id/alerts/active", requireAuth, async (c) => {
   return c.json(alert ? toAlert(alert) : null);
 });
 
-// ─── Página pública do link (sem login) ──────────────────────────────────────
-
 alertRoutes.get("/alerts/:id", async (c) => c.json(toAlert(await findAlert(c.req.param("id")))));
 
-/** Pessoa cuidada e fila de cuidadores do alerta, sem dados que não precisam sair (telefones da rede, código de convite). */
+// Sem telefones da rede nem código de convite: a rota é pública.
 alertRoutes.get("/alerts/:id/context", async (c) => {
   const alert = await findAlert(c.req.param("id"));
   const [patient, caregivers] = await Promise.all([
@@ -87,7 +78,6 @@ alertRoutes.get("/alerts/:id/context", async (c) => {
   });
 });
 
-/** Quem recebeu o aviso diz se vai ajudar ("assumiu") ou se não consegue agora ("recusou"). */
 alertRoutes.post("/alerts/:id/respond", async (c) => {
   const alert = await findAlert(c.req.param("id"));
   assertActive(alert.status);
@@ -116,7 +106,6 @@ alertRoutes.post("/alerts/:id/respond", async (c) => {
   return c.json(toAlert(await findAlert(alert.id)));
 });
 
-/** Encerra o atendimento ("Cheguei, está tudo bem"). */
 alertRoutes.post("/alerts/:id/resolve", async (c) => {
   const alert = await findAlert(c.req.param("id"));
   assertActive(alert.status);

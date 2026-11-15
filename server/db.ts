@@ -3,10 +3,7 @@ import { PrismaClient } from "./generated/prisma/client.js";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-/**
- * Cliente do banco. Reaproveitado entre requisições (e entre recargas do `tsx watch`)
- * para não abrir uma conexão nova a cada chamada.
- */
+// Reaproveita a conexão entre requisições (e entre recargas do tsx watch).
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });

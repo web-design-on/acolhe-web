@@ -1,7 +1,6 @@
 import { handle } from "hono/vercel";
 import { app } from "../server/routes/index.js";
 
-/** Função do Vercel: todas as rotas /api/* chegam aqui (veja vercel.json). */
 const handler = handle(app);
 
 export const GET = handler;

@@ -67,7 +67,7 @@ export function RegisterPage() {
   const [found, setFound] = useState<Patient | null>(null);
   const [finished, setFinished] = useState<Finished | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  // Lista de municípios (com código IBGE): carregada só quando o campo Cidade aparece, para não pesar no resto do site.
+  // Carregada só aqui, para não pesar no resto do site.
   const [cities, setCities] = useState<typeof import("@/utils/municipios") | null>(null);
 
   useEffect(() => { headingRef.current?.focus(); }, [profile, step, finished, verifying]);

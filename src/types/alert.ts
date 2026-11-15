@@ -33,9 +33,7 @@ export interface EmergencyAlert {
   location?: string;
 }
 
-/** O que a página pública do alerta (link do WhatsApp/SMS) precisa, sem exigir login. */
 export interface AlertContext {
   patient: Patient;
-  /** Fila de cuidadores, sem os telefones. */
   caregivers: Caregiver[];
 }

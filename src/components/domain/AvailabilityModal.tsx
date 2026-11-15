@@ -8,9 +8,7 @@ import { formatLongDate } from "@/utils/date";
 import { mapsUrl } from "@/utils/maps";
 
 const SAO_PAULO_IBGE = "355030";
-/** Consulta oficial da Prefeitura de São Paulo, que mostra o estoque por UBS. */
 const REMEDIO_NA_HORA_URL = "https://e-saudesp.prefeitura.sp.gov.br/#/remedio-na-hora";
-/** Quantas UBSs mostrar por remédio (as de maior estoque). */
 const MAX_UNITS = 3;
 
 const formatNumber = (value: number) => value.toLocaleString("pt-BR");
@@ -23,7 +21,6 @@ interface AvailabilityModalProps {
   patient: Patient;
 }
 
-/** Onde retirar os remédios da receita: estoque nas UBSs do município da pessoa cuidada. */
 export function AvailabilityModal({ open, onClose, prescription, patient }: AvailabilityModalProps) {
   const city = patient.cityIbgeCode ?? "";
   const codes = prescription.items.flatMap((item) => (item.catmatCode ? [item.catmatCode] : []));

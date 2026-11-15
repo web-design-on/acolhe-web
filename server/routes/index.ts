@@ -8,10 +8,6 @@ import { availabilityRoutes } from "./availability.js";
 import { careRoutes } from "./care.js";
 import { patientRoutes } from "./patients.js";
 
-/**
- * API do portal web. Roda como função no Vercel (api/index.ts) e localmente com server/dev.ts.
- * Cada arquivo desta pasta agrupa as rotas de um assunto; as protegidas usam requireAuth (server/auth.ts).
- */
 export const app = new Hono<AppEnv>().basePath("/api");
 
 app.get("/health", async (c) => {

@@ -1,13 +1,7 @@
-/**
- * Horários e duração dos remédios da receita.
- * Usado no portal (horários sugeridos na nova receita) e no back-end (cria o remédio na rotina ao assinar).
- */
-
 const normalize = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** Horários sugeridos pela frequência: "a cada 12 horas" → 08:00 e 20:00; "à noite" → 21:00. */
 export function timesForFrequency(frequency: string): string[] {
   const f = normalize(frequency);
   const every = f.match(/a cada (\d+) ?h/);
@@ -26,7 +20,6 @@ export function timesForFrequency(frequency: string): string[] {
   return ["08:00"];
 }
 
-/** "8:00, 20h, 21:30" → ["08:00", "20:00", "21:30"]. Ignora o que não for horário válido. */
 export function parseTimes(text: string): string[] {
   const times = [...text.matchAll(/(\d{1,2})(?:[:h](\d{2}))?/g)]
     .map(([, h, m = "00"]) => [Number(h), Number(m)] as const)
@@ -35,7 +28,6 @@ export function parseTimes(text: string): string[] {
   return [...new Set(times)].sort();
 }
 
-/** "7 dias" → 7; "Uso contínuo" (ou sem número) → undefined. */
 export function durationDays(duration: string): number | undefined {
   const match = normalize(duration).match(/(\d+)\s*dia/);
   return match ? Number(match[1]) : undefined;

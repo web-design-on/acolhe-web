@@ -7,6 +7,6 @@ export default defineConfig({
     path: "prisma/migrations",
     seed: "tsx --tsconfig tsconfig.server.json prisma/seed.ts",
   },
-  // process.env (e não env()) para `prisma generate` funcionar no build mesmo sem banco configurado.
+  // process.env (e não env()): o build roda mesmo sem banco configurado.
   datasource: { url: process.env.DATABASE_URL ?? "" },
 });

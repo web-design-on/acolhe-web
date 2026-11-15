@@ -12,7 +12,6 @@ export const authRoutes = new Hono<AppEnv>();
 
 const required = (value: unknown) => typeof value === "string" && value.trim().length > 0;
 
-/** Código de 6 dígitos que ainda não foi usado. */
 async function newInviteCode(tx: Prisma.TransactionClient) {
   for (;;) {
     const code = String(100000 + Math.floor(Math.random() * 900000));
@@ -32,7 +31,6 @@ authRoutes.post("/auth/login", async (c) => {
   return c.json<Session>({ token: await createToken(user), user: await toUser(user) });
 });
 
-/** Cria a conta de quem cuida (familiar, vizinho...) ou do médico e já devolve a sessão. */
 authRoutes.post("/auth/register", async (c) => {
   const input = await readJson<RegisterInput>(c);
   if (![input.name, input.email, input.password].every(required) || input.password.length < 8) {
@@ -61,7 +59,6 @@ authRoutes.post("/auth/register", async (c) => {
       patientId = patient.id;
     } else if (input.newPatient && required(input.newPatient.name)) {
       const { name: patientName, birthYear, city } = input.newPatient;
-      // Com o código IBGE, a disponibilidade de remédios do SUS funciona para a cidade dela.
       const municipio = findMunicipio(city);
       patientId = (await tx.patient.create({
         data: {
@@ -95,5 +92,4 @@ authRoutes.post("/auth/register", async (c) => {
   return c.json<Session>({ token: await createToken(user), user: await toUser(user) }, 201);
 });
 
-/** O token não é guardado no servidor: sair é apagar a sessão no navegador. */
 authRoutes.post("/auth/logout", requireAuth, (c) => c.body(null, 204));
