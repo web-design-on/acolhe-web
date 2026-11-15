@@ -4,7 +4,7 @@
 .even { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
 .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
 .stack { display: flex; flex-direction: column; gap: 16px; }
-.sectionTitle { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.sectionTitle { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; min-height: 46px; }
 .sectionTitle h2 { margin: 0; font-size: 22px; }
 .muted { color: var(--color-text-muted); }
 .center { text-align: center; }
