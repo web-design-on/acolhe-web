@@ -25,11 +25,10 @@ const hoursOptions = [6, 12, 24].map((h) => ({ value: String(h), label: `${h} ho
 
 /** Junta as regras salvas com os remédios atuais: remédio novo entra com a regra padrão. */
 function withAllMedications(rules: CareRules, medications: Medication[]): CareRules {
-  const defaults = buildDefaultRules(rules.patientId);
   const byId = new Map(rules.medications.map((r) => [r.medicationId, r]));
   return {
     ...rules,
-    medications: medications.map((m) => byId.get(m.id) ?? defaults.medications.find((d) => d.medicationId === m.id) ?? {
+    medications: medications.map((m) => byId.get(m.id) ?? {
       medicationId: m.id, requiresConfirmation: true, toleranceMinutes: 30, notifyWho: "principal", repeatReminder: true,
     }),
   };

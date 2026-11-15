@@ -1,6 +1,7 @@
 import grid from "@/components/layout/grid.module.css";
 import { Card, CardHeader, StatusTag } from "@/components/ui";
 import { useAdherence, useTimeline } from "@/hooks/useCare";
+import { adherencePercent } from "@/utils/adherence";
 import { AdherenceBarChart, Metric } from "./Charts";
 import { QueryState } from "./QueryState";
 import { Timeline } from "./Timeline";
@@ -14,14 +15,16 @@ export function RoutineReport({ patientId }: { patientId: string }) {
     <>
       <QueryState query={adherence}>
         {(a) => {
-          const percent = Math.round((a.taken / a.scheduled) * 100);
+          const percent = adherencePercent(a);
           return (
             <div className={grid.report}>
               <Card>
                 <CardHeader
                   eyebrow={`Últimos ${a.periodDays} dias`}
                   title="Adesão aos medicamentos"
-                  action={<StatusTag tone={percent >= 85 ? "success" : "warning"}>{percent}% no horário</StatusTag>}
+                  action={percent == null
+                    ? <StatusTag>Sem doses</StatusTag>
+                    : <StatusTag tone={percent >= 85 ? "success" : "warning"}>{percent}% no horário</StatusTag>}
                 />
                 <AdherenceBarChart daily={a.daily} />
               </Card>

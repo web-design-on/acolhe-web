@@ -9,6 +9,7 @@ import { queryKeys } from "@/hooks/queryKeys";
 import { usePatients } from "@/hooks/usePatients";
 import { paths } from "@/routes/paths";
 import { medicationService } from "@/services";
+import { adherencePercent } from "@/utils/adherence";
 import { exportCsv } from "@/utils/exportCsv";
 
 export function ReportsPage() {
@@ -26,7 +27,7 @@ export function ReportsPage() {
   const handleExport = () => {
     const rows = (patientsQuery.data ?? []).map((p) => {
       const a = adherenceById.get(p.id);
-      return [p.fullName, p.age, a ? `${Math.round((a.taken / a.scheduled) * 100)}%` : "", a?.late ?? "", a?.notes ?? "", p.status];
+      return [p.fullName, p.age, a && adherencePercent(a) != null ? `${adherencePercent(a)}%` : "", a?.late ?? "", a?.notes ?? "", p.status];
     });
     exportCsv("acolhe-relatorio-pacientes.csv", ["Paciente", "Idade", "Adesão 30 dias", "Doses atrasadas", "Anotações", "Situação"], rows);
   };
@@ -51,11 +52,11 @@ export function ReportsPage() {
                 <tbody>
                   {patients.map((p) => {
                     const a = adherenceById.get(p.id);
-                    const percent = a ? Math.round((a.taken / a.scheduled) * 100) : null;
+                    const percent = a ? adherencePercent(a) : undefined;
                     return (
                       <tr key={p.id} style={{ cursor: "pointer" }} onClick={() => navigate(`${paths.doctor.patient(p.id)}?aba=rotina`)}>
                         <td><span className={table.person}><Avatar initials={p.initials} size="sm" /><b>{p.fullName}</b></span></td>
-                        <td>{percent != null ? <StatusTag tone={percent >= 90 ? "success" : "warning"}>{percent}%</StatusTag> : "…"}</td>
+                        <td>{percent === undefined ? "…" : percent === null ? "Sem doses" : <StatusTag tone={percent >= 90 ? "success" : "warning"}>{percent}%</StatusTag>}</td>
                         <td>{a ? `${a.taken} de ${a.scheduled}` : "…"}</td>
                         <td>{a?.late ?? "…"}</td>
                         <td>{a?.notes ?? "…"}</td>
