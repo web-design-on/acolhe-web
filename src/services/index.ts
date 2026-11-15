@@ -9,3 +9,4 @@ export * from "./timelineService";
 export * from "./appointmentService";
 export * from "./prescriptionService";
 export * from "./careRulesService";
+export * from "./availabilityService";

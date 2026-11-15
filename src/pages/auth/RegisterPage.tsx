@@ -67,8 +67,13 @@ export function RegisterPage() {
   const [found, setFound] = useState<Patient | null>(null);
   const [finished, setFinished] = useState<Finished | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // Lista de municípios (com código IBGE): carregada só quando o campo Cidade aparece, para não pesar no resto do site.
+  const [cities, setCities] = useState<typeof import("@/utils/municipios") | null>(null);
 
   useEffect(() => { headingRef.current?.focus(); }, [profile, step, finished, verifying]);
+  useEffect(() => {
+    if (data.patientMode === "new" && !cities) void import("@/utils/municipios").then(setCities);
+  }, [data.patientMode, cities]);
 
   // Só redireciona quem já estava logado. Durante o envio, a sessão nova ainda não deve tirar a pessoa desta tela.
   if (user && !finished && !busy && !verifying) return <Navigate to={homePathFor(user.role)} replace />;
@@ -98,6 +103,7 @@ export function RegisterPage() {
           const year = Number(data.birthYear);
           if (!(year >= 1900 && year <= new Date().getFullYear())) e.birthYear = "Digite o ano de nascimento, com 4 números.";
           if (!data.city.trim()) e.city = "Informe a cidade.";
+          else if (cities && !cities.findMunicipio(data.city)) e.city = "Escolha a cidade na lista, com o estado (ex.: Petrolina, PE).";
         }
       }
       if (step === 3) {
@@ -373,7 +379,13 @@ export function RegisterPage() {
               <TextField label="Nome da pessoa cuidada" value={data.newName} onChange={(e) => set("newName", e.target.value)} error={errors.newName || undefined} />
               <div className={styles.row2}>
                 <TextField label="Ano de nascimento" inputMode="numeric" maxLength={4} placeholder="1948" value={data.birthYear} onChange={(e) => set("birthYear", e.target.value.replace(/\D/g, ""))} error={errors.birthYear || undefined} />
-                <TextField label="Cidade" value={data.city} onChange={(e) => set("city", e.target.value)} error={errors.city || undefined} />
+                <TextField
+                  label="Cidade" placeholder="Ex.: Petrolina, PE" list="municipios" autoComplete="off"
+                  value={data.city} onChange={(e) => set("city", e.target.value)} error={errors.city || undefined}
+                />
+                <datalist id="municipios">
+                  {cities?.searchMunicipios(data.city).map((m) => <option key={m.ibgeCode} value={m.label} />)}
+                </datalist>
               </div>
               <p className={styles.lead} style={{ fontSize: 15 }}>No final, mostramos um código para ligar o app dela à sua conta.</p>
             </>

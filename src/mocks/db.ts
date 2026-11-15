@@ -17,17 +17,17 @@ export const users: (User & { password: string })[] = [
 export const patients: Patient[] = [
   {
     id: "p-maria", name: "Dona Maria", fullName: "Maria Aparecida Souza", initials: "MA", age: 78,
-    city: "São Paulo, SP", address: "Rua das Flores, 120", status: "atencao", inviteCode: "482910", phone: "(11) 94444-0000",
+    city: "São Paulo, SP", cityIbgeCode: "355030", address: "Rua das Flores, 120", status: "atencao", inviteCode: "482910", phone: "(11) 94444-0000",
     attentionNote: "Relatou tontura", lastActivityAt: minutesAgo(8), batteryLevel: 72, adherence30d: 92,
   },
   {
     id: "p-jose", name: "Seu José", fullName: "José da Silva", initials: "JS", age: 69,
-    city: "São Paulo, SP", address: "Av. Brasil, 455", status: "estavel",
+    city: "São Paulo, SP", cityIbgeCode: "355030", address: "Av. Brasil, 455", status: "estavel",
     lastActivityAt: minutesAgo(35), batteryLevel: 54, adherence30d: 88,
   },
   {
     id: "p-helena", name: "Dona Helena", fullName: "Helena Costa", initials: "HC", age: 82,
-    city: "Santo André, SP", address: "Rua Ipê, 33", status: "estavel",
+    city: "Santo André, SP", cityIbgeCode: "354780", address: "Rua Ipê, 33", status: "estavel",
     lastActivityAt: minutesAgo(90), batteryLevel: 91, adherence30d: 97,
   },
 ];
@@ -93,6 +93,7 @@ export const appointments: Appointment[] = [
   { id: "ap3", patientId: "p-jose", doctorId: "u-paulo", doctorName: "Dr. Paulo Mendes", specialty: "Clínica geral", at: todayAt(16, 30), durationMinutes: 30, mode: "online" },
   { id: "ap4", patientId: "p-jose", doctorId: "u-paulo", doctorName: "Dr. Paulo Mendes", specialty: "Clínica geral", at: daysFromToday(7, 14, 0), durationMinutes: 45, mode: "presencial", location: "Clínica Bem Viver, sala 4" },
   { id: "ap5", patientId: "p-helena", doctorId: "u-paulo", doctorName: "Dr. Paulo Mendes", specialty: "Clínica geral", at: todayAt(9, 0), durationMinutes: 30, mode: "presencial", location: "Clínica Bem Viver, sala 4" },
+  { id: "ap6", patientId: "p-maria", doctorId: "u-paulo", doctorName: "Dra. Ana Paula", specialty: "Clínica geral", at: daysFromToday(5, 14, 0), durationMinutes: 45, mode: "presencial", location: "Einstein Hospital Israelita – Complexo Morumbi" },
 ];
 
 export const prescriptions: Prescription[] = [
@@ -101,8 +102,8 @@ export const prescriptions: Prescription[] = [
     issuedAt: daysFromToday(-10, 9, 0), title: "Receita de uso contínuo", status: "ativa", signed: true,
     instructions: "Manter acompanhamento da pressão arterial.",
     items: [
-      { medication: "Losartana", dose: "50 mg", frequency: "1 comprimido a cada 12 horas", duration: "Uso contínuo" },
-      { medication: "Metformina", dose: "850 mg", frequency: "1 comprimido após o almoço", duration: "Uso contínuo" },
+      { medication: "Losartana", dose: "50 mg", frequency: "1 comprimido a cada 12 horas", duration: "Uso contínuo", catmatCode: "BR0268856U0042" },
+      { medication: "Metformina", dose: "850 mg", frequency: "1 comprimido após o almoço", duration: "Uso contínuo", catmatCode: "BR0267691U0042" },
     ],
   },
   {

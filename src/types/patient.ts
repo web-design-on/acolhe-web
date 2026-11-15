@@ -7,6 +7,8 @@ export interface Patient {
   initials: string;
   age: number;
   city: string;
+  /** Código IBGE do município (ex.: 355030 = São Paulo), usado na disponibilidade de remédios do SUS. */
+  cityIbgeCode?: string;
   address: string;
   status: PatientStatus;
   /** Observação curta exibida quando o status é "atencao". */

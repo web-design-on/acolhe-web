@@ -11,6 +11,7 @@ import {
 } from "@/hooks/useCare";
 import { paths } from "@/routes/paths";
 import type { Patient } from "@/types";
+import { adherencePercent } from "@/utils/adherence";
 import { formatDayAndTime, formatTime, formatTimeAgo, formatWeekdayHeader } from "@/utils/date";
 
 function greeting() {
@@ -131,7 +132,10 @@ function AdherenceCard({ patientId }: { patientId: string }) {
       <CardHeader eyebrow="Últimos 30 dias" title="Adesão aos remédios" />
       <QueryState query={query}>
         {(a) => {
-          const percent = Math.round((a.taken / a.scheduled) * 100);
+          const percent = adherencePercent(a);
+          if (percent == null) {
+            return <EmptyState title="Nenhuma dose ainda" description="A adesão aparece aqui quando houver remédios com horário cadastrados." />;
+          }
           return (
             <>
               <AdherenceDonut percent={percent} />

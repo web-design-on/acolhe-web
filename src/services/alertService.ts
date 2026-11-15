@@ -1,8 +1,8 @@
 import { apiConfig } from "./config";
 import { http } from "./http";
-import { alerts } from "@/mocks/db";
+import { alerts, caregivers, patients } from "@/mocks/db";
 import { mockError, mockResponse } from "@/mocks/helpers";
-import type { EmergencyAlert } from "@/types";
+import type { AlertContext, EmergencyAlert } from "@/types";
 
 const ACTIVE: EmergencyAlert["status"][] = ["enviado", "assumido"];
 const DEMO_ID = "a-demo";
@@ -46,6 +46,18 @@ export const alertService = {
     if (!apiConfig.useMocks) return http.get<EmergencyAlert>(`/alerts/${alertId}`);
     const alert = alertId === "demo" ? ensureDemoAlert() : alerts.find((a) => a.id === alertId);
     return alert ? mockResponse(alert) : mockError("Este alerta não existe ou já foi encerrado.");
+  },
+
+  /** Pessoa cuidada e fila de cuidadores do alerta, para a página pública (sem login). */
+  async getContext(alertId: string): Promise<AlertContext> {
+    if (!apiConfig.useMocks) return http.get<AlertContext>(`/alerts/${alertId}/context`);
+    const alert = alertId === "demo" ? ensureDemoAlert() : alerts.find((a) => a.id === alertId);
+    const patient = patients.find((p) => p.id === alert?.patientId);
+    if (!alert || !patient) return mockError("Este alerta não existe ou já foi encerrado.");
+    return mockResponse({
+      patient,
+      caregivers: caregivers.filter((c) => c.patientId === alert.patientId).sort((a, b) => a.order - b.order),
+    });
   },
 
   /** Quem recebeu o aviso diz se vai ajudar ("assumiu") ou se não consegue agora ("recusou"). */

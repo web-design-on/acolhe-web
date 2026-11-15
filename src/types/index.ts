@@ -7,3 +7,4 @@ export * from "./timeline";
 export * from "./appointment";
 export * from "./prescription";
 export * from "./careRules";
+export * from "./availability";

@@ -9,11 +9,38 @@ import { useCreatePrescription } from "@/hooks/useCare";
 import { usePatient } from "@/hooks/usePatients";
 import { paths } from "@/routes/paths";
 import type { PrescriptionItem } from "@/types";
+import { parseTimes, timesForFrequency } from "@/utils/doseTimes";
+import { findByName, findSusMedication, susMedications } from "@/utils/susCatalog";
 
 const frequencyOptions = ["1 comprimido após o almoço", "1 comprimido a cada 12 horas", "1 comprimido a cada 8 horas", "1 comprimido pela manhã", "1 comprimido à noite"];
 const durationOptions = ["Uso contínuo", "7 dias", "14 dias", "30 dias", "90 dias"];
 
-const emptyItem = (): PrescriptionItem => ({ medication: "", dose: "", frequency: frequencyOptions[0], duration: durationOptions[0], suggestConfirmation: true });
+/** Nomes do catálogo do SUS, para sugerir enquanto o médico digita. */
+const susNames = [...new Set(susMedications.map((m) => m.name))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+/** Doses que o SUS distribui para o remédio digitado, em ordem crescente. */
+function susDoses(medication: string) {
+  const doses = findByName(medication).flatMap((m) => (m.dose ? [m.dose] : []));
+  return [...new Set(doses)].sort((a, b) => parseFloat(a.replace(",", ".")) - parseFloat(b.replace(",", ".")));
+}
+
+/** Avisa se o remédio está no catálogo do SUS: sem isso, a família não consegue ver a disponibilidade nas UBSs. */
+function susHint(item: PrescriptionItem) {
+  if (item.medication.trim().length < 3) return {};
+  const match = findSusMedication(item.medication, item.dose);
+  if (match) return { dose: `No SUS: ${match.description.toLowerCase()}` };
+  const doses = susDoses(item.medication);
+  if (!doses.length) return { medication: "Fora do catálogo do SUS: a família não poderá ver a disponibilidade nas UBSs." };
+  return { dose: item.dose.trim() ? `Dose não distribuída pelo SUS. Doses no SUS: ${doses.join(", ")}.` : `Doses no SUS: ${doses.join(", ")}.` };
+}
+
+/** Item do formulário: os horários ficam como texto enquanto o médico digita ("08:00, 20:00"). */
+type FormItem = PrescriptionItem & { timesText: string };
+
+const emptyItem = (): FormItem => ({
+  medication: "", dose: "", frequency: frequencyOptions[0], duration: durationOptions[0], suggestConfirmation: true,
+  timesText: timesForFrequency(frequencyOptions[0]).join(", "),
+});
 
 export function NewPrescriptionPage() {
   const { patientId = "" } = useParams();
@@ -22,15 +49,15 @@ export function NewPrescriptionPage() {
   const { data: patient } = usePatient(patientId);
   const createPrescription = useCreatePrescription(patientId, doctor);
 
-  const [items, setItems] = useState<PrescriptionItem[]>([emptyItem()]);
+  const [items, setItems] = useState<FormItem[]>([emptyItem()]);
   const [instructions, setInstructions] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const updateItem = (index: number, changes: Partial<PrescriptionItem>) =>
+  const updateItem = (index: number, changes: Partial<FormItem>) =>
     setItems((list) => list.map((item, i) => (i === index ? { ...item, ...changes } : item)));
 
-  const valid = items.every((i) => i.medication.trim() && i.dose.trim());
+  const valid = items.every((i) => i.medication.trim() && i.dose.trim() && parseTimes(i.timesText).length > 0);
 
   const handleReview = (e: FormEvent) => {
     e.preventDefault();
@@ -38,7 +65,10 @@ export function NewPrescriptionPage() {
   };
 
   const handleSign = async () => {
-    await createPrescription.mutateAsync({ patientId, items, instructions });
+    const toSend = items.map(({ timesText, ...item }): PrescriptionItem => ({
+      ...item, times: parseTimes(timesText), catmatCode: findSusMedication(item.medication, item.dose)?.catmatCode,
+    }));
+    await createPrescription.mutateAsync({ patientId, items: toSend, instructions });
     setConfirming(false);
     setSent(true);
   };
@@ -62,17 +92,40 @@ export function NewPrescriptionPage() {
       <form className={styles.layout} onSubmit={handleReview}>
         <Card>
           <h2 className={styles.formTitle}>Dados da prescrição</h2>
-          {items.map((item, index) => (
+          <datalist id="sus-medicamentos">
+            {susNames.map((name) => <option key={name} value={name} />)}
+          </datalist>
+          {items.map((item, index) => {
+            const hint = susHint(item);
+            return (
             <fieldset key={index} className={styles.item}>
               <legend>Medicamento {items.length > 1 ? index + 1 : ""}</legend>
               <div className={styles.row}>
-                <TextField label="Medicamento" value={item.medication} onChange={(e) => updateItem(index, { medication: e.target.value })} placeholder="Ex.: Metformina" required />
-                <TextField label="Dose" value={item.dose} onChange={(e) => updateItem(index, { dose: e.target.value })} placeholder="Ex.: 850 mg" required />
+                <TextField
+                  label="Medicamento" value={item.medication} onChange={(e) => updateItem(index, { medication: e.target.value })}
+                  placeholder="Ex.: Metformina" list="sus-medicamentos" hint={hint.medication} required
+                />
+                <TextField
+                  label="Dose" value={item.dose} onChange={(e) => updateItem(index, { dose: e.target.value })}
+                  placeholder="Ex.: 850 mg" list={`sus-doses-${index}`} hint={hint.dose} required
+                />
+                <datalist id={`sus-doses-${index}`}>
+                  {susDoses(item.medication).map((dose) => <option key={dose} value={dose} />)}
+                </datalist>
               </div>
               <div className={styles.row}>
-                <SelectField label="Frequência" value={item.frequency} onChange={(e) => updateItem(index, { frequency: e.target.value })} options={frequencyOptions.map((o) => ({ value: o, label: o }))} />
+                <SelectField
+                  label="Frequência" value={item.frequency} options={frequencyOptions.map((o) => ({ value: o, label: o }))}
+                  onChange={(e) => updateItem(index, { frequency: e.target.value, timesText: timesForFrequency(e.target.value).join(", ") })}
+                />
                 <SelectField label="Duração" value={item.duration} onChange={(e) => updateItem(index, { duration: e.target.value })} options={durationOptions.map((o) => ({ value: o, label: o }))} />
               </div>
+              <TextField
+                label="Horários" value={item.timesText} onChange={(e) => updateItem(index, { timesText: e.target.value })}
+                placeholder="Ex.: 08:00, 20:00"
+                hint={parseTimes(item.timesText).length ? "O app lembra a pessoa nesses horários. Separe por vírgula." : undefined}
+                error={item.timesText.trim() && !parseTimes(item.timesText).length ? "Use o formato 08:00, separado por vírgula." : undefined}
+              />
               <Switch
                 label="Sugerir confirmação de tomada"
                 description="O app pergunta se a pessoa tomou este remédio. A família pode mudar isso nas configurações."
@@ -83,7 +136,8 @@ export function NewPrescriptionPage() {
                 <Button variant="ghost" icon={<Trash2 size={16} />} onClick={() => setItems((l) => l.filter((_, i) => i !== index))}>Remover medicamento</Button>
               )}
             </fieldset>
-          ))}
+            );
+          })}
           <Button variant="secondary" icon={<Plus size={18} />} onClick={() => setItems((l) => [...l, emptyItem()])}>Adicionar medicamento</Button>
           <TextAreaField label="Orientações para o paciente" value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Ex.: Tomar 1 comprimido após o almoço. Não tomar em jejum." />
           <Banner tone="warning" icon={<ShieldCheck size={20} />} title="Esta receita ficará disponível no aplicativo assim que for assinada." />
@@ -95,6 +149,7 @@ export function NewPrescriptionPage() {
             <div key={idx} className={styles.summaryItem}>
               <h3>{i.medication || "Medicamento"} {i.dose}</h3>
               <p>{i.frequency} • {i.duration}</p>
+              {parseTimes(i.timesText).length > 0 && <p>Horários: {parseTimes(i.timesText).join(", ")}</p>}
               <p>{i.suggestConfirmation ? "O app pede confirmação de tomada (sugestão)" : "Sem confirmação de tomada"}</p>
             </div>
           ))}

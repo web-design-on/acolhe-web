@@ -1,4 +1,5 @@
 export * from "./AlertsTable";
+export * from "./AvailabilityModal";
 export * from "./Banner";
 export * from "./CareCards";
 export * from "./CareRulesCard";

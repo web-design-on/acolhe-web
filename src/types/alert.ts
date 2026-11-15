@@ -1,4 +1,5 @@
-import type { AlertChannel } from "./caregiver";
+import type { AlertChannel, Caregiver } from "./caregiver";
+import type { Patient } from "./patient";
 
 export type AlertStatus = "contagem" | "enviado" | "assumido" | "resolvido" | "cancelado";
 
@@ -30,4 +31,11 @@ export interface EmergencyAlert {
   offline?: boolean;
   /** Última localização conhecida, em texto. */
   location?: string;
+}
+
+/** O que a página pública do alerta (link do WhatsApp/SMS) precisa, sem exigir login. */
+export interface AlertContext {
+  patient: Patient;
+  /** Fila de cuidadores, sem os telefones. */
+  caregivers: Caregiver[];
 }

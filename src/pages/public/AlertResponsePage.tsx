@@ -4,9 +4,7 @@ import { CircleCheck, HandHeart, MapPin, Phone, Siren, UserRoundCheck } from "lu
 import styles from "./AlertResponsePage.module.css";
 import { Brand, Button, IconBadge, StatusTag } from "@/components/ui";
 import { ChannelTag, QueryState } from "@/components/domain";
-import { useAlert, useResolveAlert, useRespondToAlert } from "@/hooks/useCare";
-import { useCaregivers } from "@/hooks/useCaregivers";
-import { usePatient } from "@/hooks/usePatients";
+import { useAlert, useAlertContext, useResolveAlert, useRespondToAlert } from "@/hooks/useCare";
 import type { Caregiver, EmergencyAlert, Patient, RecipientStatus } from "@/types";
 import { formatTime, formatTimeAgo } from "@/utils/date";
 
@@ -47,8 +45,9 @@ export function AlertResponsePage() {
 }
 
 function AlertView({ alert, alertId, myId }: { alert: EmergencyAlert; alertId: string; myId: string }) {
-  const { data: patient } = usePatient(alert.patientId);
-  const { data: caregivers = [] } = useCaregivers(alert.patientId);
+  const { data: context } = useAlertContext(alertId);
+  const patient = context?.patient;
+  const caregivers = context?.caregivers ?? [];
   const respond = useRespondToAlert(alertId);
   const resolve = useResolveAlert(alertId);
   const headingRef = useRef<HTMLHeadingElement>(null);

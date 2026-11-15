@@ -4,3 +4,7 @@ dist
 .env
 .DS_Store
 *.tsbuildinfo
+
+# Cliente do Prisma (gerado por `prisma generate`)
+server/generated
+.vercel
