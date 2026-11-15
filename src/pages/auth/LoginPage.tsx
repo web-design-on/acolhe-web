@@ -80,7 +80,7 @@ export function LoginPage() {
         </form>
         <p className={styles.signup}>Ainda não tem conta? <Link to={paths.register}>Criar conta</Link></p>
 
-        {apiConfig.useMocks && (
+        {apiConfig.demoLogin && (
           <div className={styles.demo}>
             <p>Modo demonstração: escolha uma conta para preencher</p>
             <div className={styles.demoList}>

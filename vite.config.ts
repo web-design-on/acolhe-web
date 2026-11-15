@@ -7,5 +7,9 @@ export default defineConfig({
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    // A API local (npm run dev:api) roda em outra porta; assim o site chama /api como no Vercel.
+    proxy: { "/api": `http://localhost:${process.env.API_PORT ?? 3334}` },
+  },
 });

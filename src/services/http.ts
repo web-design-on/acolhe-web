@@ -1,4 +1,5 @@
 import { apiConfig } from "./config";
+import { paths } from "@/routes/paths";
 import { SESSION_KEY, storage } from "@/utils/storage";
 import type { Session } from "@/types";
 
@@ -22,6 +23,11 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (response.status === 401 && token) {
+    // Sessão expirada ou de outro ambiente (ex.: token dos dados simulados): volta para o login.
+    storage.remove(SESSION_KEY);
+    window.location.assign(paths.login);
+  }
   if (!response.ok) {
     const message = await response.text().catch(() => response.statusText);
     throw new ApiError(response.status, message || "Erro ao comunicar com o servidor");

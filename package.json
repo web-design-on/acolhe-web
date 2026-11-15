@@ -4,23 +4,43 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n api,site -c blue,green \"npm:dev:api\" \"npm:dev:site\"",
+    "dev:site": "vite",
+    "dev:api": "tsx watch --tsconfig tsconfig.server.json server/dev.ts",
     "build": "tsc -b && vite build",
+    "vercel-build": "prisma migrate deploy && tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset",
+    "db:studio": "prisma studio",
+    "catalog:update": "tsx scripts/update-sus-catalog.ts"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
     "@tanstack/react-query": "^5.107.1",
+    "bcryptjs": "^3.0.3",
+    "hono": "^4.13.18",
+    "jose": "^6.2.17",
     "lucide-react": "^1.70.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.5"
   },
   "devDependencies": {
+    "@hono/node-server": "^2.1.8",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
+    "concurrently": "^10.0.7",
+    "dotenv": "^18.0.10",
+    "prisma": "^7.10.1",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.6"
   }
