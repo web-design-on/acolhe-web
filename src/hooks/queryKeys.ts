@@ -12,6 +12,8 @@ export const queryKeys = {
   patientAppointments: (patientId: string) => ["appointments", "patient", patientId] as const,
   doctorAppointments: (doctorId: string) => ["appointments", "doctor", doctorId] as const,
   alert: (alertId: string) => ["alert", alertId] as const,
+  alertContext: (alertId: string) => ["alert", alertId, "context"] as const,
   careRules: (patientId: string) => ["careRules", patientId] as const,
   prescriptions: (patientId: string) => ["prescriptions", patientId] as const,
+  availability: (cityIbgeCode: string, catmatCodes: string[]) => ["availability", cityIbgeCode, ...catmatCodes] as const,
 };

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import grid from "@/components/layout/grid.module.css";
 import { Button, EmptyState, PageHeader } from "@/components/ui";
-import { AppointmentCard, PrescriptionCard, QueryState } from "@/components/domain";
+import { AppointmentCard, AvailabilityModal, PrescriptionCard, QueryState } from "@/components/domain";
 import { useActivePatient } from "@/hooks/useActivePatient";
 import { usePatientAppointments, usePrescriptions } from "@/hooks/useCare";
+import type { Prescription } from "@/types";
 
 export function PrescriptionsPage() {
   const { data: patient } = useActivePatient();
@@ -11,6 +12,7 @@ export function PrescriptionsPage() {
   const prescriptions = usePrescriptions(patientId);
   const appointments = usePatientAppointments(patientId);
   const [showOld, setShowOld] = useState(false);
+  const [availabilityFor, setAvailabilityFor] = useState<Prescription | null>(null);
 
   return (
     <>
@@ -23,12 +25,12 @@ export function PrescriptionsPage() {
         <section>
           <div className={grid.sectionTitle}>
             <h2>{showOld ? "Todas as receitas" : "Receitas ativas"}</h2>
-            <Button variant="ghost" onClick={() => setShowOld((v) => !v)}>{showOld ? "Ver só as ativas" : "Ver anteriores"}</Button>
+            <Button variant="ghost" onClick={() => setShowOld((v) => !v)}>{showOld ? "Ver só as ativas" : "Ver todas"}</Button>
           </div>
           <QueryState query={prescriptions}>
             {(list) => {
               const visible = showOld ? list : list.filter((p) => p.status === "ativa");
-              return visible.length ? visible.map((p) => <PrescriptionCard key={p.id} prescription={p} />) : <EmptyState title="Nenhuma receita ativa" />;
+              return visible.length ? visible.map((p) => <PrescriptionCard key={p.id} prescription={p} onCheckAvailability={() => setAvailabilityFor(p)} />) : <EmptyState title="Nenhuma receita ativa" />;
             }}
           </QueryState>
         </section>
@@ -46,6 +48,9 @@ export function PrescriptionsPage() {
           </QueryState>
         </section>
       </div>
+      {availabilityFor && patient && (
+        <AvailabilityModal open onClose={() => setAvailabilityFor(null)} prescription={availabilityFor} patient={patient} />
+      )}
     </>
   );
 }

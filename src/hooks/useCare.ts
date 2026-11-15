@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "./queryKeys";
 import {
-  alertService, appointmentService, careRulesService, medicationService, prescriptionService, timelineService,
+  alertService, appointmentService, availabilityService, careRulesService, medicationService, prescriptionService, timelineService,
 } from "@/services";
 import type { CareRules, CreateNoteInput, CreatePrescriptionInput, User } from "@/types";
 
@@ -65,6 +65,16 @@ export function usePrescriptions(patientId: string) {
   return useQuery({ queryKey: queryKeys.prescriptions(patientId), queryFn: () => prescriptionService.listByPatient(patientId) });
 }
 
+/** Estoque nas UBSs do município. Só consulta quando enabled (ex.: ao abrir o modal). */
+export function useMedicationAvailability(cityIbgeCode: string, catmatCodes: string[], enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.availability(cityIbgeCode, catmatCodes),
+    queryFn: () => availabilityService.check(cityIbgeCode, catmatCodes),
+    enabled: enabled && Boolean(cityIbgeCode) && catmatCodes.length > 0,
+    staleTime: 60 * 60_000,
+  });
+}
+
 export function useCreatePrescription(patientId: string, doctor: User) {
   const client = useQueryClient();
   return useMutation({
@@ -81,6 +91,11 @@ export function useAlert(alertId: string) {
     refetchInterval: 10_000,
     staleTime: 0,
   });
+}
+
+/** Dados da página pública do alerta: pessoa cuidada e fila de cuidadores. */
+export function useAlertContext(alertId: string) {
+  return useQuery({ queryKey: queryKeys.alertContext(alertId), queryFn: () => alertService.getContext(alertId) });
 }
 
 export function useRespondToAlert(alertId: string) {

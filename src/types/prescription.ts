@@ -5,6 +5,10 @@ export interface PrescriptionItem {
   duration: string;
   /** O médico sugere que o app pergunte se a pessoa tomou. A família decide nas configurações. */
   suggestConfirmation?: boolean;
+  /** Código CATMAT do SUS, usado para consultar a disponibilidade nas UBSs. */
+  catmatCode?: string;
+  /** Horários das doses (HH:mm). Só no envio da receita: viram os horários do remédio na rotina. */
+  times?: string[];
 }
 
 export type PrescriptionStatus = "ativa" | "encerrada";
