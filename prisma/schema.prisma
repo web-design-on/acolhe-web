@@ -1,0 +1,449 @@
+// Estrutura do banco do Acolhe, compartilhado pelo back-end do portal web (este repositório)
+// e pelo back-end do app mobile. Só este repositório cria e altera tabelas (migrações):
+// mudanças combinadas aqui, o outro back-end copia este arquivo e roda `prisma generate`.
+//
+// Convenções:
+// - Tabelas e colunas em snake_case no banco (@@map / @map); campos em camelCase no código.
+// - Valores dos enums iguais às strings usadas nos tipos TypeScript dos dois apps.
+// - Dados derivados não são guardados: iniciais (do nome), idade (de birth_year) e adesão (das doses).
+// - Senhas: hash bcrypt (custo 10) em users.password_hash.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../server/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Usuários ────────────────────────────────────────────────────────────────
+
+/// pessoa: a pessoa cuidada (app). cuidador: familiar, vizinho... (app e portal, onde aparece como "familiar"). medico: só portal.
+enum UserRole {
+  pessoa
+  cuidador
+  medico
+}
+
+enum TextSize {
+  normal
+  grande
+  muito_grande
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  /// Nome curto das saudações ("Dona Maria", "Ana").
+  displayName  String   @map("display_name")
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole
+
+  /// Apenas médicos.
+  crm       String?
+  crmUf     String? @map("crm_uf")
+  specialty String?
+
+  /// Preferências de acessibilidade (pessoa cuidada).
+  textSize       TextSize? @map("text_size")
+  voiceReminders Boolean?  @map("voice_reminders")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Perfil de pessoa cuidada desta conta (role = pessoa).
+  patient         Patient?        @relation("PatientAccount")
+  /// Redes de cuidado de que esta conta participa (role = cuidador).
+  caregiverLinks  Caregiver[]
+  /// Pacientes acompanhados (role = medico).
+  doctorPatients  DoctorPatient[]
+  prescriptions   Prescription[]
+  appointments    Appointment[]
+  timelineEntries TimelineEntry[]
+
+  @@map("users")
+}
+
+// ─── Pessoa cuidada e rede de cuidado ────────────────────────────────────────
+
+enum PatientStatus {
+  estavel
+  atencao
+  em_alerta
+}
+
+model Patient {
+  id             String        @id @default(cuid())
+  /// Conta no app, quando a própria pessoa cuidada tem login.
+  userId         String?       @unique @map("user_id")
+  name           String
+  fullName       String        @map("full_name")
+  birthYear      Int?          @map("birth_year")
+  city           String
+  /// Código IBGE do município (ex.: 355030 = São Paulo). Usado na disponibilidade de remédios do SUS.
+  cityIbgeCode   String?       @map("city_ibge_code")
+  address        String        @default("")
+  phone          String?
+  status         PatientStatus @default(estavel)
+  /// Observação curta exibida quando o status é "atencao".
+  attentionNote  String?       @map("attention_note")
+  lastActivityAt DateTime?     @map("last_activity_at")
+  batteryLevel   Int?          @map("battery_level")
+  /// Código de 6 dígitos para a família vincular a pessoa cuidada.
+  inviteCode     String        @unique @map("invite_code")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  user            User?            @relation("PatientAccount", fields: [userId], references: [id], onDelete: SetNull)
+  caregivers      Caregiver[]
+  doctors         DoctorPatient[]
+  alerts          EmergencyAlert[]
+  medications     Medication[]
+  doses           MedicationDose[]
+  timelineEntries TimelineEntry[]
+  appointments    Appointment[]
+  prescriptions   Prescription[]
+  careRules       CareRules?
+
+  @@map("patients")
+}
+
+enum CaregiverRelationType {
+  familiar
+  vizinho
+  amigo
+  cuidador_profissional
+  outro
+}
+
+/// Por onde o alerta chega. "app" só para quem instalou o aplicativo.
+enum AlertChannel {
+  app
+  whatsapp
+  sms
+}
+
+/// cuidador (nível 1): usa o app. apoio (nível 2): só recebe alertas por WhatsApp/SMS.
+enum CaregiverLevel {
+  cuidador
+  apoio
+}
+
+enum CaregiverStatus {
+  ativo
+  convite_pendente
+  pausado
+}
+
+model Caregiver {
+  id           String                @id @default(cuid())
+  patientId    String                @map("patient_id")
+  /// Conta do cuidador, quando ele tem login (nível 1). Contatos de apoio não têm.
+  userId       String?               @map("user_id")
+  name         String
+  /// Texto livre exibido na tela, ex.: "Filha", "Vizinha do 12".
+  relation     String
+  relationType CaregiverRelationType @map("relation_type")
+  phone        String
+  /// Ordem de acionamento nos alertas (1 = primeiro).
+  order        Int                   @map("alert_order")
+  status       CaregiverStatus       @default(convite_pendente)
+  level        CaregiverLevel
+  /// Canais em ordem de tentativa; o primeiro é o preferido.
+  channels     AlertChannel[]
+  /// Minutos de espera antes de avisar a próxima pessoa da fila.
+  waitMinutes  Int                   @map("wait_minutes")
+
+  receivesAlerts Boolean @default(true) @map("receives_alerts")
+  canViewHealth  Boolean @default(false) @map("can_view_health")
+  canViewRoutine Boolean @default(false) @map("can_view_routine")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  patient       Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  user          User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  alertReceipts AlertRecipient[]
+  assumedAlerts EmergencyAlert[]
+
+  @@unique([patientId, userId])
+  @@index([patientId, order])
+  @@map("caregivers")
+}
+
+model DoctorPatient {
+  doctorId  String   @map("doctor_id")
+  patientId String   @map("patient_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  doctor  User    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@id([doctorId, patientId])
+  @@map("doctor_patients")
+}
+
+// ─── Alertas de emergência ───────────────────────────────────────────────────
+
+enum AlertStatus {
+  contagem
+  enviado
+  assumido
+  resolvido
+  cancelado
+}
+
+enum RecipientStatus {
+  enviado
+  visto
+  assumiu
+  recusou
+}
+
+model EmergencyAlert {
+  id                   String      @id @default(cuid())
+  patientId            String      @map("patient_id")
+  createdAt            DateTime    @default(now()) @map("created_at")
+  /// Nome de quem disparou, como exibido ("Dona Maria").
+  triggeredBy          String      @map("triggered_by")
+  status               AlertStatus @default(enviado)
+  assumedByCaregiverId String?     @map("assumed_by_caregiver_id")
+  /// Tempo até alguém assumir, em segundos.
+  responseTimeSeconds  Int?        @map("response_time_seconds")
+  resolvedAt           DateTime?   @map("resolved_at")
+  resultNote           String?     @map("result_note")
+  /// A pessoa estava sem internet: o pedido saiu por SMS.
+  offline              Boolean     @default(false)
+  /// Última localização conhecida, em texto.
+  location             String?
+
+  patient    Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  assumedBy  Caregiver?       @relation(fields: [assumedByCaregiverId], references: [id], onDelete: SetNull)
+  recipients AlertRecipient[]
+
+  @@index([patientId, createdAt])
+  @@map("alerts")
+}
+
+model AlertRecipient {
+  alertId        String          @map("alert_id")
+  caregiverId    String          @map("caregiver_id")
+  status         RecipientStatus @default(enviado)
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at")
+  /// Canal pelo qual o aviso foi entregue (ou o último tentado).
+  channel        AlertChannel?
+  /// Canais que falharam antes, na ordem em que foram tentados.
+  failedChannels AlertChannel[]  @map("failed_channels")
+
+  alert     EmergencyAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  caregiver Caregiver      @relation(fields: [caregiverId], references: [id], onDelete: Cascade)
+
+  @@id([alertId, caregiverId])
+  @@map("alert_recipients")
+}
+
+// ─── Remédios e doses ────────────────────────────────────────────────────────
+
+model Medication {
+  id             String    @id @default(cuid())
+  patientId      String    @map("patient_id")
+  name           String
+  dose           String
+  frequency      String
+  instructions   String    @default("")
+  /// Horários do dia, formato HH:mm.
+  times          String[]
+  continuousUse  Boolean   @default(false) @map("continuous_use")
+  /// Código CATMAT do SUS, usado para consultar a disponibilidade nas UBSs.
+  catmatCode     String?   @map("catmat_code")
+  /// Receita que originou o remédio (vazio para remédios cadastrados de outra forma).
+  prescriptionId String?   @map("prescription_id")
+  /// Doses são criadas a partir deste momento...
+  startsAt       DateTime  @default(now()) @map("starts_at")
+  /// ...até este (vazio = uso contínuo).
+  endsAt         DateTime? @map("ends_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  patient      Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescription Prescription?    @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+  doses        MedicationDose[]
+  rule         MedicationRule?
+
+  @@map("medications")
+}
+
+enum DoseStatus {
+  tomado
+  pendente
+  atrasado
+  adiado
+}
+
+model MedicationDose {
+  id                  String     @id @default(cuid())
+  medicationId        String     @map("medication_id")
+  patientId           String     @map("patient_id")
+  scheduledAt         DateTime   @map("scheduled_at")
+  /// Horário original quando a dose foi adiada (scheduled_at passa a ser o novo horário).
+  originalScheduledAt DateTime?  @map("original_scheduled_at")
+  status              DoseStatus @default(pendente)
+  /// Nome de quem confirmou, como exibido.
+  confirmedBy         String?    @map("confirmed_by")
+  confirmedAt         DateTime?  @map("confirmed_at")
+
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  patient    Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  /// Uma dose por remédio e horário: evita duplicar quando os dois back-ends criam as doses do dia.
+  @@unique([medicationId, scheduledAt])
+  @@index([patientId, scheduledAt])
+  @@map("medication_doses")
+}
+
+// ─── Rotina (linha do tempo) ─────────────────────────────────────────────────
+
+enum TimelineEntryType {
+  medicacao
+  anotacao
+  sintoma
+  atividade
+  alerta
+}
+
+model TimelineEntry {
+  id           String            @id @default(cuid())
+  patientId    String            @map("patient_id")
+  at           DateTime          @default(now())
+  type         TimelineEntryType
+  title        String
+  description  String            @default("")
+  /// Nome de quem escreveu, como exibido.
+  authorName   String            @map("author_name")
+  authorUserId String?           @map("author_user_id")
+  /// Destaca o item (algo que merece atenção).
+  warn         Boolean           @default(false)
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  author  User?   @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, at])
+  @@map("timeline_entries")
+}
+
+// ─── Consultas e receitas ────────────────────────────────────────────────────
+
+enum AppointmentMode {
+  online
+  presencial
+}
+
+model Appointment {
+  id              String          @id @default(cuid())
+  patientId       String          @map("patient_id")
+  doctorId        String          @map("doctor_id")
+  specialty       String
+  at              DateTime
+  durationMinutes Int             @map("duration_minutes")
+  mode            AppointmentMode
+  /// Local da consulta presencial.
+  location        String?
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  User    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, at])
+  @@index([doctorId, at])
+  @@map("appointments")
+}
+
+enum PrescriptionStatus {
+  ativa
+  encerrada
+}
+
+model Prescription {
+  id           String             @id @default(cuid())
+  patientId    String             @map("patient_id")
+  doctorId     String             @map("doctor_id")
+  issuedAt     DateTime           @default(now()) @map("issued_at")
+  title        String
+  instructions String             @default("")
+  status       PrescriptionStatus @default(ativa)
+  signed       Boolean            @default(false)
+
+  patient     Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      User               @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  items       PrescriptionItem[]
+  /// Remédios criados na rotina quando a receita foi assinada.
+  medications Medication[]
+
+  @@index([patientId, issuedAt])
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id                  String  @id @default(cuid())
+  prescriptionId      String  @map("prescription_id")
+  /// Ordem do item na receita.
+  position            Int
+  medication          String
+  dose                String
+  frequency           String
+  duration            String
+  /// O médico sugere que o app pergunte se a pessoa tomou.
+  suggestConfirmation Boolean @default(false) @map("suggest_confirmation")
+  /// Código CATMAT do SUS, usado para consultar a disponibilidade nas UBSs.
+  catmatCode          String? @map("catmat_code")
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([prescriptionId, position])
+  @@map("prescription_items")
+}
+
+// ─── Regras de cuidado (Configurações do portal) ─────────────────────────────
+
+enum NoticeLevel {
+  discreto
+  normal
+  urgente
+}
+
+enum NotifyWho {
+  ninguem
+  principal
+  todos
+}
+
+model CareRules {
+  patientId       String      @id @map("patient_id")
+  remindersLevel  NoticeLevel @default(normal) @map("reminders_level")
+  delaysLevel     NoticeLevel @default(normal) @map("delays_level")
+  /// Experimental: avisa se o celular ficar parado por muito tempo.
+  noActivityAlert Boolean     @default(false) @map("no_activity_alert")
+  noActivityHours Int         @default(12) @map("no_activity_hours")
+  /// Lembretes falados em voz alta no app da pessoa cuidada.
+  voiceReminders  Boolean     @default(false) @map("voice_reminders")
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("care_rules")
+}
+
+model MedicationRule {
+  medicationId         String    @id @map("medication_id")
+  /// "Precisa confirmar que tomou?"
+  requiresConfirmation Boolean   @default(true) @map("requires_confirmation")
+  /// Minutos sem confirmação até a regra agir.
+  toleranceMinutes     Int       @default(30) @map("tolerance_minutes")
+  notifyWho            NotifyWho @default(principal) @map("notify_who")
+  /// Repete o lembrete uma vez depois da tolerância.
+  repeatReminder       Boolean   @default(true) @map("repeat_reminder")
+
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@map("medication_rules")
+}
