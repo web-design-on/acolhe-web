@@ -9,10 +9,7 @@ import type { Caregiver, CareRules, InviteCaregiverInput } from "../../src/types
 
 export const patientRoutes = new Hono<AppEnv>();
 
-/**
- * Busca pelo código de 6 dígitos, usada no cadastro (antes do login).
- * Devolve só o necessário para confirmar a pessoa: sem endereço, telefone ou observações.
- */
+// Pública (usada no cadastro): devolve só o necessário para confirmar a pessoa.
 patientRoutes.get("/patients/by-code/:code", async (c) => {
   const patient = await prisma.patient.findUnique({ where: { inviteCode: c.req.param("code") } });
   if (!patient) return c.json(null);
@@ -33,13 +30,10 @@ patientRoutes.get("/patients/:id", requireAuth, async (c) => {
   return c.json(await toPatient(await prisma.patient.findUniqueOrThrow({ where: { id } })));
 });
 
-// ─── Rede de cuidadores ──────────────────────────────────────────────────────
-
 async function listCaregivers(patientId: string) {
   return (await prisma.caregiver.findMany({ where: { patientId }, orderBy: { order: "asc" } })).map(toCaregiver);
 }
 
-/** Busca o cuidador e confere se o usuário tem acesso à rede dele. */
 async function findCaregiver(c: Parameters<typeof assertPatientAccess>[0], id: string) {
   const caregiver = await prisma.caregiver.findUnique({ where: { id } });
   if (!caregiver) throw new HTTPException(404, { message: "Cuidador não encontrado." });
@@ -53,7 +47,6 @@ patientRoutes.get("/patients/:id/caregivers", requireAuth, async (c) => {
   return c.json(await listCaregivers(patientId));
 });
 
-/** Convida alguém para a rede: familiar, vizinho, amigo... */
 patientRoutes.post("/patients/:id/caregivers", requireAuth, async (c) => {
   const patientId = c.req.param("id");
   await assertPatientAccess(c, patientId);
@@ -77,7 +70,6 @@ patientRoutes.patch("/caregivers/:id", requireAuth, async (c) => {
   return c.json(toCaregiver(await prisma.caregiver.update({ where: { id: caregiver.id }, data })));
 });
 
-/** Muda a ordem de acionamento nos alertas. Recebe os ids na nova ordem. */
 patientRoutes.put("/patients/:id/caregivers/order", requireAuth, async (c) => {
   const patientId = c.req.param("id");
   await assertPatientAccess(c, patientId);
@@ -93,8 +85,6 @@ patientRoutes.delete("/caregivers/:id", requireAuth, async (c) => {
   await prisma.caregiver.delete({ where: { id: caregiver.id } });
   return c.body(null, 204);
 });
-
-// ─── Regras de cuidado ───────────────────────────────────────────────────────
 
 patientRoutes.get("/patients/:id/care-rules", requireAuth, async (c) => {
   const patientId = c.req.param("id");

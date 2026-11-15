@@ -65,7 +65,6 @@ export function usePrescriptions(patientId: string) {
   return useQuery({ queryKey: queryKeys.prescriptions(patientId), queryFn: () => prescriptionService.listByPatient(patientId) });
 }
 
-/** Estoque nas UBSs do município. Só consulta quando enabled (ex.: ao abrir o modal). */
 export function useMedicationAvailability(cityIbgeCode: string, catmatCodes: string[], enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.availability(cityIbgeCode, catmatCodes),
@@ -93,7 +92,6 @@ export function useAlert(alertId: string) {
   });
 }
 
-/** Dados da página pública do alerta: pessoa cuidada e fila de cuidadores. */
 export function useAlertContext(alertId: string) {
   return useQuery({ queryKey: queryKeys.alertContext(alertId), queryFn: () => alertService.getContext(alertId) });
 }

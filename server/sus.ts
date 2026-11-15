@@ -1,15 +1,11 @@
-/**
- * Consulta de estoque de remédios nas unidades do SUS.
- * Fonte: API de Dados Abertos do Ministério da Saúde (base BNAFAR/Hórus), atualizada uma vez por dia.
- * A API não libera chamadas do navegador (sem CORS), por isso passa pelo back-end.
- */
+// A API do Ministério da Saúde não aceita chamadas do navegador (sem CORS), por isso passa pelo back-end.
 import type { AvailabilityResult, AvailabilityUnit, MedicationAvailability } from "../src/types/availability.js";
 
 const STOCK_URL = "https://apidadosabertos.saude.gov.br/daf/estoque-medicamentos-bnafar-horus";
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 5;
 
-/** Registros de órgãos administrativos (secretaria, almoxarifado) não são lugar de retirada. */
+// Órgãos administrativos não entregam remédio à população.
 const ADMIN_UNIT = /SECRETARIA|GABINETE|ALMOXARIFADO|CENTRAL DE ABASTECIMENTO|\bCAF\b/i;
 
 interface StockRecord {
@@ -45,7 +41,6 @@ async function fetchStock(cityIbgeCode: string, catmatCode: string): Promise<Sto
 
 const SMALL_WORDS = new Set(["de", "da", "do", "das", "dos", "e"]);
 
-/** "CENTRO DE SAUDE JARDIM BASSOLI" → "Centro de Saude Jardim Bassoli" */
 function titleCase(text: string) {
   return text.toLowerCase().trim().split(/\s+/)
     .map((word, i) => (i > 0 && SMALL_WORDS.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1)))
@@ -58,7 +53,7 @@ function formatAddress(r: StockRecord) {
 }
 
 function summarize(catmatCode: string, records: StockRecord[], today: string): MedicationAvailability {
-  // Lotes vencidos e zerados aparecem na base (há registros de anos atrás); só conta o que pode ser entregue.
+  // A base traz lotes vencidos e zerados de anos atrás.
   const valid = records.filter((r) => (r.quantidade_estoque ?? 0) > 0 && (!r.data_validade || r.data_validade.slice(0, 10) >= today));
 
   const units = new Map<number, AvailabilityUnit>();

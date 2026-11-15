@@ -24,7 +24,7 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
     body: body ? JSON.stringify(body) : undefined,
   });
   if (response.status === 401 && token) {
-    // Sessão expirada ou de outro ambiente (ex.: token dos dados simulados): volta para o login.
+    // Sessão expirada ou de outro ambiente (ex.: token dos mocks).
     storage.remove(SESSION_KEY);
     window.location.assign(paths.login);
   }

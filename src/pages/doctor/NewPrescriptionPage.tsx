@@ -15,16 +15,13 @@ import { findByName, findSusMedication, susMedications } from "@/utils/susCatalo
 const frequencyOptions = ["1 comprimido após o almoço", "1 comprimido a cada 12 horas", "1 comprimido a cada 8 horas", "1 comprimido pela manhã", "1 comprimido à noite"];
 const durationOptions = ["Uso contínuo", "7 dias", "14 dias", "30 dias", "90 dias"];
 
-/** Nomes do catálogo do SUS, para sugerir enquanto o médico digita. */
 const susNames = [...new Set(susMedications.map((m) => m.name))].sort((a, b) => a.localeCompare(b, "pt-BR"));
 
-/** Doses que o SUS distribui para o remédio digitado, em ordem crescente. */
 function susDoses(medication: string) {
   const doses = findByName(medication).flatMap((m) => (m.dose ? [m.dose] : []));
   return [...new Set(doses)].sort((a, b) => parseFloat(a.replace(",", ".")) - parseFloat(b.replace(",", ".")));
 }
 
-/** Avisa se o remédio está no catálogo do SUS: sem isso, a família não consegue ver a disponibilidade nas UBSs. */
 function susHint(item: PrescriptionItem) {
   if (item.medication.trim().length < 3) return {};
   const match = findSusMedication(item.medication, item.dose);
@@ -34,7 +31,6 @@ function susHint(item: PrescriptionItem) {
   return { dose: item.dose.trim() ? `Dose não distribuída pelo SUS. Doses no SUS: ${doses.join(", ")}.` : `Doses no SUS: ${doses.join(", ")}.` };
 }
 
-/** Item do formulário: os horários ficam como texto enquanto o médico digita ("08:00, 20:00"). */
 type FormItem = PrescriptionItem & { timesText: string };
 
 const emptyItem = (): FormItem => ({

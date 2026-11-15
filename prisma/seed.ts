@@ -1,8 +1,4 @@
-/**
- * Popula o banco com os mesmos dados de demonstração dos mocks (src/mocks/db.ts),
- * mantendo os ids que o app mobile também usa (u-ana, p-maria, c-ana...).
- * Apaga tudo antes de inserir: rode só em desenvolvimento (`npm run db:seed`).
- */
+// Apaga tudo e recria os dados de demonstração, com os mesmos ids dos mocks dos dois apps.
 import bcrypt from "bcryptjs";
 import { prisma } from "../server/db.js";
 import { saoPauloDay } from "../server/mappers.js";
@@ -12,7 +8,6 @@ import {
 
 const SENHA_DEMO = "12345678";
 
-/** Conta da pessoa cuidada, que só existe nos mocks do app mobile. */
 const maria = { id: "u-maria", name: "Maria Aparecida Souza", displayName: "Dona Maria", email: "maria@exemplo.com" };
 
 async function main() {
@@ -88,7 +83,7 @@ async function main() {
   console.log(`Banco populado. Contas de demonstração (senha ${SENHA_DEMO}): ${[maria.email, ...users.map((u) => u.email)].join(", ")}`);
 }
 
-/** Doses de hoje dos mocks, no horário de São Paulo (os mocks usam o fuso de quem roda o seed). */
+// Os mocks gravam as doses de hoje no fuso de quem roda o seed; aqui vão para o de São Paulo.
 function todayDoses() {
   return doses.map((d) => {
     const local = new Date(d.scheduledAt);
@@ -96,10 +91,7 @@ function todayDoses() {
   });
 }
 
-/**
- * Doses dos últimos 30 dias (os mocks só têm as de hoje), para a adesão e os relatórios terem dados.
- * Cerca de 1 em 9 doses fica "atrasado" (não confirmada), de forma fixa para o resultado ser sempre igual.
- */
+// Os mocks só têm as doses de hoje; ~1 em 9 fica atrasada, de forma fixa.
 function doseHistory() {
   return medications.flatMap((m, medIndex) =>
     Array.from({ length: 29 }, (_, i) => i + 1).flatMap((daysAgo) =>

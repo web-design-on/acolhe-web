@@ -10,23 +10,18 @@ import type { CreateNoteInput, CreatePrescriptionInput } from "../../src/types/i
 import { durationDays, parseTimes, timesForFrequency } from "../../src/utils/doseTimes.js";
 import { findSusMedication } from "../../src/utils/susCatalog.js";
 
-/** Remédios, doses, rotina, consultas e receitas. */
 export const careRoutes = new Hono<AppEnv>();
-
-// ─── Remédios e doses ────────────────────────────────────────────────────────
 
 careRoutes.get("/patients/:id/medications", requireAuth, async (c) => {
   const patientId = c.req.param("id");
   await assertPatientAccess(c, patientId);
   await ensureDoses(patientId);
-  // Só os remédios em uso: os de receitas com duração já terminada saem da lista.
   const medications = await prisma.medication.findMany({
     where: { patientId, OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] }, orderBy: { createdAt: "asc" },
   });
   return c.json(await toMedications(medications));
 });
 
-/** Doses de hoje (dia de São Paulo). */
 careRoutes.get("/patients/:id/doses", requireAuth, async (c) => {
   const patientId = c.req.param("id");
   await assertPatientAccess(c, patientId);
@@ -45,8 +40,6 @@ careRoutes.get("/patients/:id/adherence", requireAuth, async (c) => {
   await ensureDoses(patientId);
   return c.json(await adherenceSummary(patientId, days));
 });
-
-// ─── Rotina (linha do tempo) ─────────────────────────────────────────────────
 
 careRoutes.get("/patients/:id/timeline", requireAuth, async (c) => {
   const patientId = c.req.param("id");
@@ -68,8 +61,6 @@ careRoutes.post("/patients/:id/timeline", requireAuth, async (c) => {
   return c.json(toTimelineEntry(entry), 201);
 });
 
-// ─── Consultas ───────────────────────────────────────────────────────────────
-
 careRoutes.get("/patients/:id/appointments", requireAuth, async (c) => {
   const patientId = c.req.param("id");
   await assertPatientAccess(c, patientId);
@@ -77,15 +68,12 @@ careRoutes.get("/patients/:id/appointments", requireAuth, async (c) => {
   return c.json(list.map(toAppointment));
 });
 
-/** Agenda do médico: só a própria. */
 careRoutes.get("/doctors/:id/appointments", requireAuth, async (c) => {
   assertDoctor(c);
   if (c.req.param("id") !== c.get("user").id) throw new HTTPException(403, { message: "Você só pode ver a sua agenda." });
   const list = await prisma.appointment.findMany({ where: { doctorId: c.get("user").id }, include: { doctor: true }, orderBy: { at: "asc" } });
   return c.json(list.map(toAppointment));
 });
-
-// ─── Receitas ────────────────────────────────────────────────────────────────
 
 const prescriptionInclude = { doctor: true, items: true } as const;
 
@@ -96,10 +84,6 @@ careRoutes.get("/patients/:id/prescriptions", requireAuth, async (c) => {
   return c.json(list.map(toPrescription));
 });
 
-/**
- * Cria, assina e envia a receita para o app do paciente. A assinatura ainda é simulada.
- * Cada item vira um remédio na rotina, com os horários informados (ou os sugeridos pela frequência).
- */
 careRoutes.post("/patients/:id/prescriptions", requireAuth, async (c) => {
   assertDoctor(c);
   const patientId = c.req.param("id");
@@ -140,7 +124,6 @@ careRoutes.post("/patients/:id/prescriptions", requireAuth, async (c) => {
           patientId, prescriptionId: rx.id, name: item.medication, dose: item.dose, frequency: item.frequency,
           instructions, times: item.times, continuousUse: item.days === undefined, catmatCode: item.catmatCode,
           startsAt: now, endsAt: item.days === undefined ? undefined : new Date(now.getTime() + item.days * 24 * 60 * 60_000),
-          // "Sugerir confirmação de tomada" vira a regra do remédio (a família pode mudar nas Configurações).
           rule: { create: { requiresConfirmation: item.suggestConfirmation ?? true } },
         },
       });

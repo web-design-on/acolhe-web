@@ -8,7 +8,6 @@ import { mapsUrl } from "@/utils/maps";
 
 interface PrescriptionCardProps {
   prescription: Prescription;
-  /** Mostra o botão "Disponibilidade" (estoque nas UBSs) nas receitas ativas. */
   onCheckAvailability?: () => void;
 }
 

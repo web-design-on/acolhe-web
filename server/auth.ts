@@ -1,4 +1,3 @@
-/** Login (token JWT) e controle de acesso: quem pode ver os dados de qual pessoa cuidada. */
 import type { Context, MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { jwtVerify, SignJWT } from "jose";
@@ -24,7 +23,6 @@ export async function createToken(user: User) {
     .sign(secret());
 }
 
-/** Exige `Authorization: Bearer <token>` e deixa o usuário em c.get("user"). */
 export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   const token = c.req.header("Authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) throw new HTTPException(401, { message: "Faça login para continuar." });
@@ -40,7 +38,6 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
 };
 
-/** Médico: pacientes vinculados a ele. Cuidador: pessoas cuidadas de cuja rede participa. */
 export async function canAccessPatient(user: User, patientId: string) {
   if (user.role === "medico") {
     return Boolean(await prisma.doctorPatient.findUnique({ where: { doctorId_patientId: { doctorId: user.id, patientId } } }));
@@ -51,7 +48,7 @@ export async function canAccessPatient(user: User, patientId: string) {
   return Boolean(await prisma.patient.findFirst({ where: { id: patientId, userId: user.id }, select: { id: true } }));
 }
 
-/** Lança 404 (e não 403) para não revelar se a pessoa cuidada existe. */
+// 404 (e não 403) para não revelar se a pessoa cuidada existe.
 export async function assertPatientAccess(c: Context<AppEnv>, patientId: string) {
   if (!(await canAccessPatient(c.get("user"), patientId))) {
     throw new HTTPException(404, { message: "Paciente não encontrado." });
@@ -62,7 +59,6 @@ export function assertDoctor(c: Context<AppEnv>) {
   if (c.get("user").role !== "medico") throw new HTTPException(403, { message: "Apenas médicos podem fazer isso." });
 }
 
-/** Lê o corpo JSON da requisição ou responde 400. */
 export async function readJson<T>(c: Context): Promise<T> {
   try {
     return (await c.req.json()) as T;

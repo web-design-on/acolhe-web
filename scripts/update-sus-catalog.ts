@@ -1,17 +1,13 @@
-/**
- * Gera src/data/susCatalog.ts: os remédios distribuídos pelo SUS, com o código CATMAT de cada um.
- * Junta os produtos que aparecem no estoque de algumas cidades grandes (API de Dados Abertos do Ministério da Saúde).
- * Rodar de vez em quando: `npm run catalog:update`. Faz poucas chamadas por vez para não sobrecarregar a API.
- */
+// Gera src/data/susCatalog.ts com os remédios do SUS (e o código CATMAT) vistos no estoque de cidades grandes.
 import { writeFile } from "node:fs/promises";
 
 const STOCK_URL = "https://apidadosabertos.saude.gov.br/daf/estoque-medicamentos-bnafar-horus";
-/** Campinas, Rio de Janeiro, Belo Horizonte, Curitiba, Porto Alegre, Recife. */
+// Campinas, Rio de Janeiro, Belo Horizonte, Curitiba, Porto Alegre, Recife.
 const CITIES = ["350950", "330455", "310620", "410690", "431490", "261160"];
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 40;
 const PARALLEL = 3;
-/** B = básico, S = estratégico, E = especializado. Fica de fora O (odontológico: fio dental, escova...). */
+// Sem "O" (odontológico: fio dental, escova...).
 const MEDICINE_TYPES = new Set(["B", "S", "E"]);
 
 interface Row { codigo_catmat: string | null; descricao_produto: string | null; tipo_produto: string | null }
@@ -56,7 +52,7 @@ for (const city of CITIES) {
 
 const catalog = [...products].map(([catmatCode, description]) => ({ catmatCode, description }))
   .sort((a, b) => a.description.localeCompare(b.description, "pt-BR"));
-// Gera um módulo .ts (e não .json) para entrar no deploy do Vercel sem configuração extra.
+// Módulo .ts (e não .json) para entrar no deploy do Vercel sem configuração extra.
 const source = `/** Gerado por scripts/update-sus-catalog.ts (npm run catalog:update). Não editar à mão. */
 export const susCatalog: { catmatCode: string; description: string }[] = ${JSON.stringify(catalog, null, 1)};
 `;

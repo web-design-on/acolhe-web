@@ -48,7 +48,6 @@ export const alertService = {
     return alert ? mockResponse(alert) : mockError("Este alerta não existe ou já foi encerrado.");
   },
 
-  /** Pessoa cuidada e fila de cuidadores do alerta, para a página pública (sem login). */
   async getContext(alertId: string): Promise<AlertContext> {
     if (!apiConfig.useMocks) return http.get<AlertContext>(`/alerts/${alertId}/context`);
     const alert = alertId === "demo" ? ensureDemoAlert() : alerts.find((a) => a.id === alertId);
