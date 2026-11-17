@@ -5,7 +5,7 @@
   font-weight: 700;
   flex: none;
   justify-content: center;
-  color: #F9F3E8;
+  color: #FFFAF3;
 }
 .primary {
   background: var(--color-primary-muted);

@@ -17,7 +17,7 @@
 .mobileBrand { display: none; }
 .login { color: var(--color-text-muted); font-size: 15px; margin-left: auto; }
 
-.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); padding: 36px; animation: fade-in .3s ease-out; }
+.card { background: var(--color-surface); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); padding: 36px; animation: fade-in .3s ease-out; }
 .card h1 { margin: 6px 0 8px; font-size: 32px; letter-spacing: -.5px; outline: none; }
 .lead { margin: 0 0 20px; color: var(--color-text-muted); font-size: 18px; line-height: 1.5; }
 .stepLabel { color: var(--color-text-muted); font-size: 14px; font-weight: 700; }
@@ -29,9 +29,9 @@
 /* Escolha de perfil */
 .choices { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; min-width: 0; }
 .choices > legend { padding: 0; margin-bottom: 12px; font-weight: 700; }
-.choice { position: relative; display: flex; align-items: center; gap: 16px; padding: 18px; border: 2px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); cursor: pointer; transition: border-color .2s, box-shadow .2s, transform .2s; }
-.choice:hover { border-color: var(--color-primary); transform: translateY(-2px); }
-.choice:has(input:checked) { border-color: var(--color-primary); background: var(--color-primary-soft); box-shadow: var(--shadow-card); }
+.choice { position: relative; display: flex; align-items: center; gap: 16px; padding: 18px; border: 0; border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-card); cursor: pointer; transition: box-shadow .2s, transform .2s; }
+.choice:hover { transform: translateY(-2px); }
+.choice:has(input:checked) { background: var(--color-primary-soft); }
 .choice:has(input:focus-visible) { outline: 3px solid var(--color-focus); outline-offset: 3px; }
 .choice input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .choiceText { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }

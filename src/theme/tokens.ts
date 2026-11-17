@@ -13,7 +13,7 @@ export const radius = {
 } as const;
 
 export const shadows = {
-  card: "0 8px 24px rgba(62, 105, 142, 0.09)",
+  card: "0 2px 8px rgba(62, 105, 142, 0.06)",
   floating: "0 15px 40px rgba(60, 144, 155, 0.14)",
   modal: "0 20px 60px rgba(0, 0, 0, 0.2)",
 } as const;
