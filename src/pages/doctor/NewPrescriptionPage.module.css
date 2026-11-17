@@ -13,7 +13,7 @@
 .summaryItem p { margin: 0 0 8px; color: var(--color-text-muted); }
 
 .modalText { line-height: 1.5; color: var(--color-text-muted); }
-.signature { font-family: var(--font-signature); font-size: 28px; background: #FFFAF3; border: 1px dashed #BAC94A; padding: 18px; margin: 20px 0; }
+.signature { font-family: var(--font-signature); font-size: 28px; background: #fff; border: 1px dashed #BAC94A; padding: 18px; margin: 20px 0; }
 .signature span { display: block; font-family: var(--font-base); font-size: 12px; color: var(--color-success); margin-top: 7px; }
 
 .done { max-width: 520px; margin: 40px auto; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
