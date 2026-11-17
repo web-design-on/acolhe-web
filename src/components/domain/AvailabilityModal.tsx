@@ -1,7 +1,7 @@
 import { ExternalLink, MapPin, Phone } from "lucide-react";
 import styles from "./AvailabilityModal.module.css";
 import { QueryState } from "./QueryState";
-import { Button, EmptyState, Modal, StatusTag } from "@/components/ui";
+import { Button, EmptyState, ErrorState, Modal, StatusTag } from "@/components/ui";
 import { useMedicationAvailability } from "@/hooks/useCare";
 import type { MedicationAvailability, Patient, Prescription, PrescriptionItem } from "@/types";
 import { formatLongDate } from "@/utils/date";
@@ -34,6 +34,11 @@ export function AvailabilityModal({ open, onClose, prescription, patient }: Avai
           title="Não dá para consultar esta receita"
           description={!city ? "A cidade da pessoa cuidada não tem código IBGE cadastrado." : "Nenhum remédio desta receita foi encontrado no catálogo do SUS, com essa dose."}
         />
+      ) : availability.isError ? (
+        <>
+          <ErrorState message={availability.error.message} onRetry={() => availability.refetch()} />
+          {city === SAO_PAULO_IBGE && <RemedioNaHora />}
+        </>
       ) : (
         <QueryState query={availability} loadingLabel="Consultando o estoque do SUS...">
           {(result) => {
@@ -47,14 +52,7 @@ export function AvailabilityModal({ open, onClose, prescription, patient }: Avai
                     data={result.medications.find((m) => m.catmatCode === item.catmatCode)}
                   />
                 ))}
-                {missingUnits && city === SAO_PAULO_IBGE && (
-                  <div className={styles.fallback}>
-                    <p>A Prefeitura de São Paulo mostra em qual UBS retirar no <b>Remédio na Hora</b>.</p>
-                    <Button variant="secondary" size="sm" icon={<ExternalLink size={16} />} onClick={() => openInNewTab(REMEDIO_NA_HORA_URL)}>
-                      Consultar no Remédio na Hora
-                    </Button>
-                  </div>
-                )}
+                {missingUnits && city === SAO_PAULO_IBGE && <RemedioNaHora />}
                 <small className={styles.source}>
                   Fonte: Ministério da Saúde (BNAFAR)
                   {result.stockDate && `, estoque de ${formatLongDate(`${result.stockDate}T12:00:00`)}`}.
@@ -66,6 +64,17 @@ export function AvailabilityModal({ open, onClose, prescription, patient }: Avai
         </QueryState>
       )}
     </Modal>
+  );
+}
+
+function RemedioNaHora() {
+  return (
+    <div className={styles.fallback}>
+      <p>A Prefeitura de São Paulo mostra em qual UBS retirar no <b>Remédio na Hora</b>.</p>
+      <Button variant="secondary" size="sm" icon={<ExternalLink size={16} />} onClick={() => openInNewTab(REMEDIO_NA_HORA_URL)}>
+        Consultar no Remédio na Hora
+      </Button>
+    </div>
   );
 }
 
