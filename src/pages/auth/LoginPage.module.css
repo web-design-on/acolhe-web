@@ -2,7 +2,7 @@
 
 .art {
   position: relative; overflow: hidden; display: grid; place-items: center;
-  background: radial-gradient(circle at center, #3C909B 0 18%, rgba(60, 144, 155, .72) 42%, rgba(60, 144, 155, .28) 64%, transparent 84%), linear-gradient(145deg, #FFFDD3, #5AA7A7);
+  background: radial-gradient(circle at center, #3C909B 0 18%, rgba(60, 144, 155, .72) 42%, rgba(60, 144, 155, .28) 64%, transparent 84%), linear-gradient(145deg, #F9F3E8, #5AA7A7);
 }
 .art::before, .art::after {
   content: ""; position: absolute; width: 390px; height: 390px; border-radius: 50%;

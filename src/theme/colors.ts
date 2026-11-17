@@ -12,7 +12,7 @@ export const palette = {
   teal800: "#3C909B",
   teal700: "#3E698E",
   teal200: "#5AA7A7",
-  teal100: "#FFFDD3",
+  teal100: "#F9F3E8",
 
   red700: "#b3261e",
   red200: "#f3d0cd",
@@ -30,9 +30,9 @@ export const palette = {
   blue100: "#e9f0fa",
 
   neutral0: "#ffffff",
-  neutral50: "#FFFDD3",
-  neutral100: "#FFFDD3",
-  neutral150: "#FFFDD3",
+  neutral50: "#F9F3E8",
+  neutral100: "#F9F3E8",
+  neutral150: "#F9F3E8",
   neutral200: "#BAC94A",
   neutral300: "#5AA7A7",
   neutral400: "#3C909B",
