@@ -10,7 +10,8 @@ import { findMunicipio } from "../../src/utils/municipios.js";
 
 export const authRoutes = new Hono<AppEnv>();
 
-const required = (value: unknown) => typeof value === "string" && value.trim().length > 0;
+const required = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
+const TEXT_SIZES = ["normal", "grande", "muito_grande"] as const;
 
 async function newInviteCode(tx: Prisma.TransactionClient) {
   for (;;) {
@@ -19,17 +20,33 @@ async function newInviteCode(tx: Prisma.TransactionClient) {
   }
 }
 
+const phoneDigits = (phone: string) => phone.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+
+// O celular é gravado como foi digitado ("(11) 94444-0000"), então a busca compara só os dígitos.
+async function findUserIdByPhone(phone: string) {
+  const digits = phoneDigits(phone);
+  if (digits.length < 10) return null;
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM users WHERE regexp_replace(phone, '\\D', '', 'g') = ${digits} LIMIT 1`;
+  return rows[0]?.id ?? null;
+}
+
+// Cada cliente decide quais perfis aceita: o portal recusa a pessoa cuidada, o app recusa o médico.
 authRoutes.post("/auth/login", async (c) => {
-  const { email, password } = await readJson<{ email?: string; password?: string }>(c);
-  const user = email ? await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } }) : null;
+  const { email, login, password } = await readJson<{ email?: string; login?: string; password?: string }>(c);
+  const identifier = (login ?? email ?? "").trim().toLowerCase();
+  const user = !identifier
+    ? null
+    : identifier.includes("@")
+      ? await prisma.user.findUnique({ where: { email: identifier } })
+      : await findUserIdByPhone(identifier).then((id) => (id ? prisma.user.findUnique({ where: { id } }) : null));
   if (!user || !password || !(await bcrypt.compare(password, user.passwordHash))) {
-    throw new HTTPException(401, { message: "E-mail ou senha incorretos." });
-  }
-  if (user.role === "pessoa") {
-    throw new HTTPException(403, { message: "Esta conta é da pessoa cuidada. Use o aplicativo Acolhe no celular." });
+    throw new HTTPException(401, { message: "E-mail/celular ou senha incorretos." });
   }
   return c.json<Session>({ token: await createToken(user), user: await toUser(user) });
 });
+
+authRoutes.get("/auth/me", requireAuth, async (c) => c.json(await toUser(c.get("user"))));
 
 authRoutes.post("/auth/register", async (c) => {
   const input = await readJson<RegisterInput>(c);
@@ -39,6 +56,11 @@ authRoutes.post("/auth/register", async (c) => {
   const email = input.email.trim().toLowerCase();
   if (await prisma.user.findUnique({ where: { email }, select: { id: true } })) {
     throw new HTTPException(409, { message: "Já existe uma conta com este e-mail." });
+  }
+  // O celular é único no banco: sem esta checagem, um número repetido virava erro 500.
+  const phone = input.role !== "medico" && required(input.phone) ? input.phone.trim() : undefined;
+  if (phone && (await findUserIdByPhone(phone))) {
+    throw new HTTPException(409, { message: "Já existe uma conta com este celular." });
   }
 
   const name = input.name.trim();
@@ -50,6 +72,35 @@ authRoutes.post("/auth/register", async (c) => {
       return tx.user.create({
         data: { ...base, role: "medico", crm: input.crm.replace(/\D/g, ""), crmUf: input.uf.toUpperCase(), specialty: input.specialty },
       });
+    }
+
+    if (input.role === "pessoa") {
+      const { textSize, voiceReminders } = input.accessibility ?? {};
+      const created = await tx.user.create({
+        data: {
+          ...base, role: "pessoa", phone,
+          textSize: textSize && TEXT_SIZES.includes(textSize) ? textSize : "normal",
+          voiceReminders: voiceReminders ?? true,
+        },
+      });
+      if (input.patientCode) {
+        const patient = await tx.patient.findUnique({ where: { inviteCode: input.patientCode }, select: { id: true, userId: true, phone: true } });
+        if (!patient) throw new HTTPException(400, { message: "Código não encontrado. Confira os 6 números com quem cuida de você." });
+        if (patient.userId) throw new HTTPException(409, { message: "Esta pessoa já tem uma conta no Acolhe. Entre com o e-mail dela." });
+        await tx.patient.update({ where: { id: patient.id }, data: { userId: created.id, phone: patient.phone ?? phone } });
+      } else if (input.newPatient && required(input.newPatient.city)) {
+        const { birthYear, city } = input.newPatient;
+        const municipio = findMunicipio(city);
+        await tx.patient.create({
+          data: {
+            userId: created.id, name, fullName: name, birthYear, phone, inviteCode: await newInviteCode(tx),
+            city: municipio?.label ?? city.trim(), cityIbgeCode: municipio?.ibgeCode,
+          },
+        });
+      } else {
+        throw new HTTPException(400, { message: "Informe o código de quem cuida de você ou o seu ano de nascimento e cidade." });
+      }
+      return created;
     }
 
     let patientId: string;
@@ -70,7 +121,7 @@ authRoutes.post("/auth/register", async (c) => {
       throw new HTTPException(400, { message: "Informe o código ou os dados da pessoa cuidada." });
     }
 
-    const created = await tx.user.create({ data: { ...base, role: "cuidador", phone: input.phone || undefined } });
+    const created = await tx.user.create({ data: { ...base, role: "cuidador", phone } });
     const order = await tx.caregiver.count({ where: { patientId } });
     await tx.caregiver.create({
       data: {
