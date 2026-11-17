@@ -30,7 +30,7 @@ async function fetchStock(cityIbgeCode: string, catmatCode: string): Promise<Sto
     const params = new URLSearchParams({
       codigo_municipio: cityIbgeCode, codigo_catmat: catmatCode, limit: String(PAGE_SIZE), offset: String(page), // offset é o número da página
     });
-    const response = await fetch(`${STOCK_URL}?${params}`, { signal: AbortSignal.timeout(20_000) });
+    const response = await fetch(`${STOCK_URL}?${params}`, { signal: AbortSignal.timeout(8_000) });
     if (!response.ok) throw new Error(`API do Ministério da Saúde respondeu ${response.status}`);
     const { parametros } = (await response.json()) as { parametros: StockRecord[] };
     records.push(...parametros);

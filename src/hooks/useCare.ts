@@ -71,6 +71,7 @@ export function useMedicationAvailability(cityIbgeCode: string, catmatCodes: str
     queryFn: () => availabilityService.check(cityIbgeCode, catmatCodes),
     enabled: enabled && Boolean(cityIbgeCode) && catmatCodes.length > 0,
     staleTime: 60 * 60_000,
+    retry: false,
   });
 }
 
