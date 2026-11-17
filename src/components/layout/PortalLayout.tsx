@@ -46,7 +46,7 @@ export function PortalLayout() {
       <a href="#conteudo" className={styles.skip}>Pular para o conteúdo</a>
       <aside className={cx(styles.aside, menuOpen && styles.open)} aria-label="Menu do portal">
         <div className={styles.asideTop}>
-          <Brand inverted />
+          <Brand inverted whiteMark />
           <button className={styles.closeMenu} onClick={() => setMenuOpen(false)} aria-label="Fechar menu"><X size={22} /></button>
         </div>
 

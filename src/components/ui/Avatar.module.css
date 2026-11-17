@@ -5,18 +5,16 @@
   font-weight: 700;
   flex: none;
   justify-content: center;
+  color: #FFFDD3;
 }
 .primary {
   background: var(--color-primary-muted);
-  color: var(--color-primary);
 }
 .info {
   background: var(--color-info-soft);
-  color: var(--color-info);
 }
 .light {
   background: var(--color-surface);
-  color: var(--color-primary);
 }
 .xs {
   width: 28px;

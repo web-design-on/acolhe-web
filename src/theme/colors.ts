@@ -29,8 +29,6 @@ export const palette = {
   blue700: "#315c88",
   blue100: "#e9f0fa",
 
-  yellow500: "#E6D94C",
-
   neutral0: "#ffffff",
   neutral50: "#FFFDD3",
   neutral100: "#FFFDD3",
@@ -64,7 +62,7 @@ export const colors = {
   warningBorder: palette.amber300,
   info: palette.blue700,
   infoSoft: palette.blue100,
-  focus: palette.yellow500,
+  focus: palette.teal800,
 
   // Superfícies e texto
   background: palette.neutral50,

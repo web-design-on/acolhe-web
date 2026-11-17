@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, HeartPulse, ShieldCheck, Stethoscope, Users } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Stethoscope, Users } from "lucide-react";
 import styles from "./LoginPage.module.css";
 import { Brand, Button, Eyebrow, IconBadge, TextField } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,7 +50,7 @@ export function LoginPage() {
   return (
     <div className={styles.page}>
       <div className={styles.art} aria-hidden>
-        <div className={styles.circle}><HeartPulse size={72} /></div>
+        <div className={styles.circle}><img src="/logobranco_acolhe.svg" alt="" /></div>
       </div>
 
       <section className={styles.panel}>
