@@ -8,11 +8,11 @@
  * Para mudar uma cor no projeto inteiro, mude aqui.
  */
 export const palette = {
-  teal900: "#0c4e4e",
-  teal800: "#094747",
-  teal700: "#0f5c5c",
-  teal200: "#d4e8e5",
-  teal100: "#e6f1ef",
+  teal900: "#3E698E",
+  teal800: "#3C909B",
+  teal700: "#3E698E",
+  teal200: "#5AA7A7",
+  teal100: "#FFFDD3",
 
   red700: "#b3261e",
   red200: "#f3d0cd",
@@ -29,15 +29,15 @@ export const palette = {
   blue700: "#315c88",
   blue100: "#e9f0fa",
 
-  yellow500: "#f2a900",
+  yellow500: "#E6D94C",
 
   neutral0: "#ffffff",
-  neutral50: "#faf8f5",
-  neutral100: "#f6f5f2",
-  neutral150: "#f2f1ee",
-  neutral200: "#eeece8",
-  neutral300: "#dedbd5",
-  neutral400: "#c9c8c3",
+  neutral50: "#FFFDD3",
+  neutral100: "#FFFDD3",
+  neutral150: "#FFFDD3",
+  neutral200: "#BAC94A",
+  neutral300: "#5AA7A7",
+  neutral400: "#3C909B",
   neutral500: "#848785",
   neutral600: "#666b69",
   neutral900: "#1a1a1a",
