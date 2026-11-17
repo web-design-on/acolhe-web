@@ -15,6 +15,7 @@
 }
 .light {
   background: var(--color-surface);
+  color: var(--color-primary);
 }
 .xs {
   width: 28px;
