@@ -30,7 +30,58 @@ careRoutes.get("/patients/:id/doses", requireAuth, async (c) => {
   const doses = await prisma.medicationDose.findMany({
     where: { patientId, scheduledAt: { gte: start, lt: end } }, orderBy: { scheduledAt: "asc" },
   });
-  return c.json(doses.map(toDose));
+  // ?include=medication: o app mostra cada dose com os dados do remédio.
+  if (c.req.query("include") !== "medication") return c.json(doses.map(toDose));
+  const medicationIds = [...new Set(doses.map((d) => d.medicationId))];
+  const medications = await toMedications(await prisma.medication.findMany({ where: { id: { in: medicationIds } } }));
+  const byId = new Map(medications.map((m) => [m.id, m]));
+  return c.json(doses.map((d) => ({ ...toDose(d), medication: byId.get(d.medicationId) })));
+});
+
+async function findDose(c: Parameters<typeof assertPatientAccess>[0], id: string) {
+  const dose = await prisma.medicationDose.findUnique({ where: { id }, include: { medication: true } });
+  if (!dose) throw new HTTPException(404, { message: "Dose não encontrada." });
+  await assertPatientAccess(c, dose.patientId);
+  return dose;
+}
+
+careRoutes.post("/doses/:id/confirm", requireAuth, async (c) => {
+  const dose = await findDose(c, c.req.param("id"));
+  if (dose.status === "tomado") return c.json(toDose(dose));
+  const user = c.get("user");
+  const now = new Date();
+  const [updated] = await prisma.$transaction([
+    prisma.medicationDose.update({
+      where: { id: dose.id }, data: { status: "tomado", confirmedBy: user.displayName, confirmedAt: now },
+    }),
+    prisma.timelineEntry.create({
+      data: {
+        patientId: dose.patientId, at: now, type: "medicacao", title: `${dose.medication.name} tomado`,
+        description: dose.medication.dose, authorName: user.displayName, authorUserId: user.id,
+      },
+    }),
+    ...(user.role === "pessoa" ? [prisma.patient.update({ where: { id: dose.patientId }, data: { lastActivityAt: now } })] : []),
+  ]);
+  return c.json(toDose(updated));
+});
+
+careRoutes.post("/doses/:id/postpone", requireAuth, async (c) => {
+  const dose = await findDose(c, c.req.param("id"));
+  if (dose.status === "tomado") throw new HTTPException(409, { message: "Esta dose já foi tomada." });
+  const { minutes = 10 } = await readJson<{ minutes?: number }>(c);
+  if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
+    throw new HTTPException(400, { message: "Adie de 1 a 240 minutos." });
+  }
+  // originalScheduledAt guarda o horário previsto: assim o ensureDoses não recria a dose adiada.
+  const updated = await prisma.medicationDose.update({
+    where: { id: dose.id },
+    data: {
+      status: "adiado",
+      originalScheduledAt: dose.originalScheduledAt ?? dose.scheduledAt,
+      scheduledAt: new Date(dose.scheduledAt.getTime() + minutes * 60_000),
+    },
+  });
+  return c.json(toDose(updated));
 });
 
 careRoutes.get("/patients/:id/adherence", requireAuth, async (c) => {

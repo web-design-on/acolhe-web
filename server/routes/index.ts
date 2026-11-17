@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { AppEnv } from "../auth.js";
 import { prisma } from "../db.js";
@@ -9,6 +10,10 @@ import { careRoutes } from "./care.js";
 import { patientRoutes } from "./patients.js";
 
 export const app = new Hono<AppEnv>().basePath("/api");
+
+// O portal é da mesma origem e o app nativo não passa por CORS: isto só vale para o app rodando no navegador (expo start --web).
+const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:8081").split(",").map((origin) => origin.trim()).filter(Boolean);
+app.use("*", cors({ origin: allowedOrigins }));
 
 app.get("/health", async (c) => {
   try {

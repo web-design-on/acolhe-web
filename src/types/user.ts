@@ -1,5 +1,13 @@
 export type UserRole = "familiar" | "medico";
 
+/** Tipo real da conta no banco. O portal só aceita "cuidador" e "medico"; o app aceita "pessoa" e "cuidador". */
+export type AccountRole = "pessoa" | "cuidador" | "medico";
+
+export interface AccessibilityPrefs {
+  textSize: "normal" | "grande" | "muito_grande";
+  voiceReminders: boolean;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -13,6 +21,14 @@ export interface User {
   phone?: string;
   /** Especialidade, apenas para médicos. */
   specialty?: string;
+  /** Preenchido pela API (ausente nos mocks do portal). */
+  accountRole?: AccountRole;
+  /** Nome curto usado nas saudações ("Dona Maria", "Ana"). */
+  displayName?: string;
+  /** Cuidador: em qual rede de cuidado está e com qual id de cuidador. */
+  caregiverLinks?: { patientId: string; caregiverId: string }[];
+  /** Pessoa cuidada: preferências de acessibilidade. */
+  accessibility?: AccessibilityPrefs;
 }
 
 export interface Session {
@@ -45,4 +61,16 @@ export interface RegisterDoctorInput {
   specialty: string;
 }
 
-export type RegisterInput = RegisterCaregiverInput | RegisterDoctorInput;
+/** Cadastro da pessoa cuidada (feito pelo app): liga a um código existente ou cria o próprio perfil. */
+export interface RegisterPersonInput {
+  role: "pessoa";
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  patientCode?: string;
+  newPatient?: { birthYear: number; city: string };
+  accessibility: AccessibilityPrefs;
+}
+
+export type RegisterInput = RegisterCaregiverInput | RegisterDoctorInput | RegisterPersonInput;

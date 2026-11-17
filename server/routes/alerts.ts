@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { assertPatientAccess, readJson, requireAuth, type AppEnv } from "../auth.js";
 import { prisma } from "../db.js";
 import { alertInclude, toAlert, toCaregiver, toPatient } from "../mappers.js";
+import type { AlertChannel } from "../generated/prisma/client.js";
 import type { AlertContext } from "../../src/types/index.js";
 
 // /alerts/:id é público (link do WhatsApp/SMS); o id longo e aleatório funciona como chave.
@@ -62,6 +63,63 @@ alertRoutes.get("/patients/:id/alerts/active", requireAuth, async (c) => {
   return c.json(alert ? toAlert(alert) : null);
 });
 
+/**
+ * Canal de cada pessoa da rede: o primeiro da lista dela.
+ * Se a pessoa cuidada está sem internet, o pedido sai por SMS e os canais anteriores contam como falha.
+ */
+function pickChannel(channels: AlertChannel[], offline: boolean) {
+  const sms = channels.indexOf("sms");
+  if (!offline || sms < 0) return { channel: channels[0], failedChannels: [] };
+  return { channel: "sms" as const, failedChannels: channels.slice(0, sms) };
+}
+
+// Disparado pela pessoa cuidada (botão de SOS do app).
+alertRoutes.post("/patients/:id/alerts", requireAuth, async (c) => {
+  const patientId = c.req.param("id");
+  await assertPatientAccess(c, patientId);
+  const { offline = false } = await readJson<{ offline?: boolean }>(c);
+
+  // Toque duplo ou reenvio: devolve o alerta que já está em andamento.
+  const active = await prisma.emergencyAlert.findFirst({
+    where: { patientId, status: { in: [...ACTIVE] } }, include: alertInclude, orderBy: { createdAt: "desc" },
+  });
+  if (active) return c.json(toAlert(active));
+
+  const [patient, caregivers] = await Promise.all([
+    prisma.patient.findUniqueOrThrow({ where: { id: patientId } }),
+    prisma.caregiver.findMany({ where: { patientId, status: "ativo", receivesAlerts: true }, orderBy: { order: "asc" } }),
+  ]);
+  const now = new Date();
+  const created = await prisma.$transaction(async (tx) => {
+    const alert = await tx.emergencyAlert.create({
+      data: {
+        patientId, triggeredBy: c.get("user").displayName, offline: Boolean(offline), location: patient.address || undefined,
+        recipients: { create: caregivers.map((cg) => ({ caregiverId: cg.id, ...pickChannel(cg.channels, Boolean(offline)) })) },
+      },
+    });
+    await tx.patient.update({ where: { id: patientId }, data: { status: "em_alerta", lastActivityAt: now } });
+    return alert;
+  });
+  return c.json(toAlert(await findAlert(created.id)), 201);
+});
+
+// Cancelado na contagem ou logo depois de enviado; exige login (diferente de respond/resolve).
+alertRoutes.post("/alerts/:id/cancel", requireAuth, async (c) => {
+  const alert = await findAlert(c.req.param("id"));
+  await assertPatientAccess(c, alert.patientId);
+  assertActive(alert.status);
+  await prisma.$transaction([
+    prisma.emergencyAlert.update({ where: { id: alert.id }, data: { status: "cancelado" } }),
+    leaveAlertStatus(alert.patientId),
+  ]);
+  return c.json(toAlert(await findAlert(alert.id)));
+});
+
+// Só desfaz o "em_alerta": não apaga um "atencao" marcado por alguém da rede.
+function leaveAlertStatus(patientId: string) {
+  return prisma.patient.updateMany({ where: { id: patientId, status: "em_alerta" }, data: { status: "estavel" } });
+}
+
 alertRoutes.get("/alerts/:id", async (c) => c.json(toAlert(await findAlert(c.req.param("id")))));
 
 // Sem telefones da rede nem código de convite: a rota é pública.
@@ -110,8 +168,11 @@ alertRoutes.post("/alerts/:id/resolve", async (c) => {
   const alert = await findAlert(c.req.param("id"));
   assertActive(alert.status);
   const { resultNote = "Tudo bem" } = await readJson<{ resultNote?: string }>(c);
-  await prisma.emergencyAlert.update({
-    where: { id: alert.id }, data: { status: "resolvido", resolvedAt: new Date(), resultNote: resultNote.slice(0, 500) },
-  });
+  await prisma.$transaction([
+    prisma.emergencyAlert.update({
+      where: { id: alert.id }, data: { status: "resolvido", resolvedAt: new Date(), resultNote: resultNote.slice(0, 500) },
+    }),
+    leaveAlertStatus(alert.patientId),
+  ]);
   return c.json(toAlert(await findAlert(alert.id)));
 });

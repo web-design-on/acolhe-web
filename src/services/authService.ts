@@ -1,5 +1,5 @@
 import { apiConfig } from "./config";
-import { http } from "./http";
+import { ApiError, http } from "./http";
 import { adherence, caregivers, patients, users } from "@/mocks/db";
 import { createId, mockError, mockResponse } from "@/mocks/helpers";
 import type { Caregiver, Patient, RegisterCaregiverInput, RegisterInput, Session } from "@/types";
@@ -40,7 +40,14 @@ function resolvePatient(input: RegisterCaregiverInput): Patient | string {
 
 export const authService = {
   async login({ email, password }: LoginInput): Promise<Session> {
-    if (!apiConfig.useMocks) return http.post<Session>("/auth/login", { email, password });
+    if (!apiConfig.useMocks) {
+      const session = await http.post<Session>("/auth/login", { email, password });
+      // A API aceita qualquer conta; o portal é só para a rede de cuidado e médicos.
+      if (session.user.accountRole === "pessoa") {
+        throw new ApiError(403, "Esta conta é da pessoa cuidada. Use o aplicativo Acolhe no celular.");
+      }
+      return session;
+    }
 
     const found = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
     if (!found || found.password !== password) return mockError("E-mail ou senha incorretos.");
@@ -52,6 +59,7 @@ export const authService = {
   /** Cria a conta de quem cuida (familiar, vizinho...) ou do médico e já devolve a sessão. */
   async register(input: RegisterInput): Promise<Session> {
     if (!apiConfig.useMocks) return http.post<Session>("/auth/register", input);
+    if (input.role === "pessoa") return mockError("O cadastro da pessoa cuidada é feito pelo aplicativo.");
 
     const email = input.email.trim().toLowerCase();
     if (users.some((u) => u.email.toLowerCase() === email)) return mockError("Já existe uma conta com este e-mail.");

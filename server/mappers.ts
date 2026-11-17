@@ -71,6 +71,10 @@ export async function patientIdsOf(user: Db.User) {
 }
 
 export async function toUser(user: Db.User): Promise<User> {
+  const caregiverLinks = user.role === "cuidador"
+    ? (await prisma.caregiver.findMany({ where: { userId: user.id }, select: { id: true, patientId: true }, orderBy: { createdAt: "asc" } }))
+        .map((c) => ({ patientId: c.patientId, caregiverId: c.id }))
+    : undefined;
   return {
     id: user.id,
     name: user.name,
@@ -78,9 +82,15 @@ export async function toUser(user: Db.User): Promise<User> {
     email: user.email,
     role: user.role === "medico" ? "medico" : "familiar",
     crm: user.crm ? `CRM ${user.crm}-${user.crmUf}` : undefined,
-    patientIds: await patientIdsOf(user),
+    patientIds: caregiverLinks ? caregiverLinks.map((link) => link.patientId) : await patientIdsOf(user),
     phone: opt(user.phone),
     specialty: opt(user.specialty),
+    accountRole: user.role,
+    displayName: user.displayName,
+    caregiverLinks,
+    accessibility: user.role === "pessoa"
+      ? { textSize: user.textSize ?? "normal", voiceReminders: user.voiceReminders ?? true }
+      : undefined,
   };
 }
 
