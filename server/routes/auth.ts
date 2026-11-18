@@ -5,13 +5,15 @@ import { createToken, readJson, requireAuth, type AppEnv } from "../auth.js";
 import { prisma } from "../db.js";
 import { toUser } from "../mappers.js";
 import type { Prisma } from "../generated/prisma/client.js";
-import type { RegisterInput, Session } from "../../src/types/index.js";
+import type { RegisterInput, Session, UpdateAccountInput } from "../../src/types/index.js";
 import { findMunicipio } from "../../src/utils/municipios.js";
 
 export const authRoutes = new Hono<AppEnv>();
 
 const required = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
 const TEXT_SIZES = ["normal", "grande", "muito_grande"] as const;
+const VOICE_VOLUMES = ["baixo", "medio", "alto"] as const;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function newInviteCode(tx: Prisma.TransactionClient) {
   for (;;) {
@@ -48,6 +50,58 @@ authRoutes.post("/auth/login", async (c) => {
 
 authRoutes.get("/auth/me", requireAuth, async (c) => c.json(await toUser(c.get("user"))));
 
+// A própria pessoa muda e-mail, celular e preferências. O celular novo também vale para os alertas:
+// atualiza o cadastro da pessoa cuidada (se for ela) e os vínculos de cuidador (se for da rede).
+authRoutes.patch("/auth/me", requireAuth, async (c) => {
+  const user = c.get("user");
+  const input = await readJson<UpdateAccountInput>(c);
+  const data: Prisma.UserUpdateInput = {};
+
+  if (input.email !== undefined) {
+    const email = input.email.trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) throw new HTTPException(400, { message: "Confira o e-mail digitado." });
+    if (email !== user.email) {
+      if (await prisma.user.findUnique({ where: { email }, select: { id: true } })) {
+        throw new HTTPException(409, { message: "Já existe uma conta com este e-mail." });
+      }
+      data.email = email;
+    }
+  }
+
+  let phone: string | undefined;
+  if (input.phone !== undefined) {
+    phone = input.phone.trim();
+    if (phoneDigits(phone).length < 10) throw new HTTPException(400, { message: "Informe o celular com DDD." });
+    const owner = await findUserIdByPhone(phone);
+    if (owner && owner !== user.id) throw new HTTPException(409, { message: "Já existe uma conta com este celular." });
+    data.phone = phone;
+  }
+
+  if (input.accessibility) {
+    if (user.role !== "pessoa") throw new HTTPException(400, { message: "Preferências de leitura são da pessoa cuidada." });
+    const { textSize, voiceReminders, voiceVolume } = input.accessibility;
+    if (textSize !== undefined) {
+      if (!TEXT_SIZES.includes(textSize)) throw new HTTPException(400, { message: "Tamanho de texto inválido." });
+      data.textSize = textSize;
+    }
+    if (voiceVolume !== undefined) {
+      if (!VOICE_VOLUMES.includes(voiceVolume)) throw new HTTPException(400, { message: "Volume inválido." });
+      data.voiceVolume = voiceVolume;
+    }
+    if (voiceReminders !== undefined) data.voiceReminders = Boolean(voiceReminders);
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const saved = await tx.user.update({ where: { id: user.id }, data });
+    if (phone) {
+      if (user.role === "pessoa") await tx.patient.updateMany({ where: { userId: user.id }, data: { phone } });
+      if (user.role === "cuidador") await tx.caregiver.updateMany({ where: { userId: user.id }, data: { phone } });
+    }
+    return saved;
+  });
+  return c.json(await toUser(updated));
+});
+
 authRoutes.post("/auth/register", async (c) => {
   const input = await readJson<RegisterInput>(c);
   if (![input.name, input.email, input.password].every(required) || input.password.length < 8) {
@@ -75,12 +129,13 @@ authRoutes.post("/auth/register", async (c) => {
     }
 
     if (input.role === "pessoa") {
-      const { textSize, voiceReminders } = input.accessibility ?? {};
+      const { textSize, voiceReminders, voiceVolume } = input.accessibility ?? {};
       const created = await tx.user.create({
         data: {
           ...base, role: "pessoa", phone,
           textSize: textSize && TEXT_SIZES.includes(textSize) ? textSize : "normal",
           voiceReminders: voiceReminders ?? true,
+          voiceVolume: voiceVolume && VOICE_VOLUMES.includes(voiceVolume) ? voiceVolume : "alto",
         },
       });
       if (input.patientCode) {

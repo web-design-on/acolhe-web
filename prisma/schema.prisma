@@ -24,6 +24,12 @@ enum TextSize {
   muito_grande
 }
 
+enum VoiceVolume {
+  baixo
+  medio
+  alto
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -37,8 +43,9 @@ model User {
   crmUf     String? @map("crm_uf")
   specialty String?
 
-  textSize       TextSize? @map("text_size")
-  voiceReminders Boolean?  @map("voice_reminders")
+  textSize       TextSize?    @map("text_size")
+  voiceReminders Boolean?     @map("voice_reminders")
+  voiceVolume    VoiceVolume? @map("voice_volume")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -60,22 +67,28 @@ enum PatientStatus {
 }
 
 model Patient {
-  id             String        @id @default(cuid())
-  userId         String?       @unique @map("user_id")
-  name           String
-  fullName       String        @map("full_name")
-  birthYear      Int?          @map("birth_year")
-  city           String
+  id                String        @id @default(cuid())
+  userId            String?       @unique @map("user_id")
+  name              String
+  fullName          String        @map("full_name")
+  birthYear         Int?          @map("birth_year")
+  city              String
   /// 6 dígitos, o formato da API de estoque do SUS.
-  cityIbgeCode   String?       @map("city_ibge_code")
-  address        String        @default("")
-  phone          String?
-  status         PatientStatus @default(estavel)
-  attentionNote  String?       @map("attention_note")
-  lastActivityAt DateTime?     @map("last_activity_at")
-  batteryLevel   Int?          @map("battery_level")
-  inviteCode     String        @unique @map("invite_code")
-  createdAt      DateTime      @default(now()) @map("created_at")
+  cityIbgeCode      String?       @map("city_ibge_code")
+  /// Montado a partir das partes abaixo ("Rua X, 123, apto 4 - Bairro"): é o que aparece nos alertas e no mapa.
+  address           String        @default("")
+  addressZip        String?       @map("address_zip")
+  addressStreet     String?       @map("address_street")
+  addressNumber     String?       @map("address_number")
+  addressComplement String?       @map("address_complement")
+  addressDistrict   String?       @map("address_district")
+  phone             String?
+  status            PatientStatus @default(estavel)
+  attentionNote     String?       @map("attention_note")
+  lastActivityAt    DateTime?     @map("last_activity_at")
+  batteryLevel      Int?          @map("battery_level")
+  inviteCode        String        @unique @map("invite_code")
+  createdAt         DateTime      @default(now()) @map("created_at")
 
   user            User?            @relation("PatientAccount", fields: [userId], references: [id], onDelete: SetNull)
   caregivers      Caregiver[]
