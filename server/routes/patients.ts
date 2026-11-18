@@ -5,7 +5,8 @@ import { prisma } from "../db.js";
 import { ensureDoses, ensureDosesFor } from "../doses.js";
 import { careRulesOf, patientIdsOf, toCaregiver, toPatient, toPatients } from "../mappers.js";
 import type { Prisma } from "../generated/prisma/client.js";
-import type { Caregiver, CareRules, InviteCaregiverInput } from "../../src/types/index.js";
+import type { Caregiver, CareRules, InviteCaregiverInput, UpdateAddressInput } from "../../src/types/index.js";
+import { findMunicipio } from "../../src/utils/municipios.js";
 
 export const patientRoutes = new Hono<AppEnv>();
 
@@ -13,7 +14,7 @@ export const patientRoutes = new Hono<AppEnv>();
 patientRoutes.get("/patients/by-code/:code", async (c) => {
   const patient = await prisma.patient.findUnique({ where: { inviteCode: c.req.param("code") } });
   if (!patient) return c.json(null);
-  const { address: _a, phone: _p, attentionNote: _n, ...safe } = await toPatient(patient);
+  const { address: _a, addressDetails: _d, phone: _p, attentionNote: _n, ...safe } = await toPatient(patient);
   return c.json({ ...safe, address: "" });
 });
 
@@ -29,6 +30,43 @@ patientRoutes.get("/patients/:id", requireAuth, async (c) => {
   await ensureDoses(id);
   return c.json(await toPatient(await prisma.patient.findUniqueOrThrow({ where: { id } })));
 });
+
+// Endereço completo da pessoa cuidada: ela mesma ou alguém da rede pode corrigir. Médicos só leem.
+patientRoutes.patch("/patients/:id/address", requireAuth, async (c) => {
+  const id = c.req.param("id");
+  await assertPatientAccess(c, id);
+  if (c.get("user").role === "medico") throw new HTTPException(403, { message: "Apenas a família pode mudar o endereço." });
+  const input = await readJson<UpdateAddressInput>(c);
+  if (!input.city?.trim()) throw new HTTPException(400, { message: "Informe a cidade." });
+  const clean = (value?: string) => value?.trim().slice(0, 120) || null;
+  const zipDigits = (input.zipCode ?? "").replace(/\D/g, "");
+  if (zipDigits && zipDigits.length !== 8) throw new HTTPException(400, { message: "O CEP precisa ter 8 números." });
+
+  const parts = {
+    addressZip: zipDigits ? `${zipDigits.slice(0, 5)}-${zipDigits.slice(5)}` : null,
+    addressStreet: clean(input.street),
+    addressNumber: clean(input.number),
+    addressComplement: clean(input.complement),
+    addressDistrict: clean(input.district),
+  };
+  const municipio = findMunicipio(input.city);
+  const updated = await prisma.patient.update({
+    where: { id },
+    data: {
+      ...parts,
+      address: addressLine(parts),
+      city: municipio?.label ?? input.city.trim(),
+      cityIbgeCode: municipio?.ibgeCode ?? null,
+    },
+  });
+  return c.json(await toPatient(updated));
+});
+
+/** "Rua X, 123, apto 4 - Bairro": a linha mostrada nos alertas e usada para abrir o mapa. */
+function addressLine(p: { addressStreet: string | null; addressNumber: string | null; addressComplement: string | null; addressDistrict: string | null }) {
+  const street = [p.addressStreet, p.addressNumber, p.addressComplement].filter(Boolean).join(", ");
+  return [street, p.addressDistrict].filter(Boolean).join(" - ");
+}
 
 async function listCaregivers(patientId: string) {
   return (await prisma.caregiver.findMany({ where: { patientId }, orderBy: { order: "asc" } })).map(toCaregiver);

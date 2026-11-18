@@ -3,9 +3,13 @@ export type UserRole = "familiar" | "medico";
 /** Tipo real da conta no banco. O portal só aceita "cuidador" e "medico"; o app aceita "pessoa" e "cuidador". */
 export type AccountRole = "pessoa" | "cuidador" | "medico";
 
+export type VoiceVolume = "baixo" | "medio" | "alto";
+
 export interface AccessibilityPrefs {
   textSize: "normal" | "grande" | "muito_grande";
   voiceReminders: boolean;
+  /** Volume da voz que lê os lembretes. */
+  voiceVolume: VoiceVolume;
 }
 
 export interface User {
@@ -74,3 +78,10 @@ export interface RegisterPersonInput {
 }
 
 export type RegisterInput = RegisterCaregiverInput | RegisterDoctorInput | RegisterPersonInput;
+
+/** PATCH /auth/me: o que a própria pessoa pode mudar na conta. Campos ausentes ficam como estão. */
+export interface UpdateAccountInput {
+  email?: string;
+  phone?: string;
+  accessibility?: Partial<AccessibilityPrefs>;
+}

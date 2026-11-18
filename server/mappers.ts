@@ -89,7 +89,7 @@ export async function toUser(user: Db.User): Promise<User> {
     displayName: user.displayName,
     caregiverLinks,
     accessibility: user.role === "pessoa"
-      ? { textSize: user.textSize ?? "normal", voiceReminders: user.voiceReminders ?? true }
+      ? { textSize: user.textSize ?? "normal", voiceReminders: user.voiceReminders ?? true, voiceVolume: user.voiceVolume ?? "alto" }
       : undefined,
   };
 }
@@ -106,6 +106,10 @@ export async function toPatients(patients: Db.Patient[]): Promise<Patient[]> {
     city: p.city,
     cityIbgeCode: opt(p.cityIbgeCode),
     address: p.address,
+    addressDetails: {
+      zipCode: opt(p.addressZip), street: opt(p.addressStreet), number: opt(p.addressNumber),
+      complement: opt(p.addressComplement), district: opt(p.addressDistrict),
+    },
     status: p.status,
     attentionNote: opt(p.attentionNote),
     lastActivityAt: iso(p.lastActivityAt ?? p.createdAt),
