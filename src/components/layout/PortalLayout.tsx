@@ -88,14 +88,17 @@ export function PortalLayout() {
         <header className={styles.top}>
           <button className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Menu size={24} /></button>
           <span className={styles.roleLabel}>{isFamily ? "Portal da família" : "Área médica"}</span>
-          <button
-            className={styles.bell}
-            aria-label={activeAlert ? "Notificações: 1 alerta em andamento" : "Notificações"}
-            onClick={() => isFamily && navigate(paths.family.alerts)}
-          >
-            <Bell size={22} />
-            {activeAlert && <span>1</span>}
-          </button>
+          {/* Só a família recebe alertas; o médico não faz parte da rede de apoio. */}
+          {isFamily && (
+            <button
+              className={styles.bell}
+              aria-label={activeAlert ? "Notificações: 1 alerta em andamento" : "Notificações"}
+              onClick={() => navigate(paths.family.alerts)}
+            >
+              <Bell size={22} />
+              {activeAlert && <span>1</span>}
+            </button>
+          )}
           <span className={styles.userName}>{user.name}</span>
           <Avatar initials={user.initials} size="sm" />
         </header>
