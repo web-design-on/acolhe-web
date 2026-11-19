@@ -244,11 +244,3 @@ Para o site no ar usar o banco:
 2. O script `vercel-build` do `package.json` aplica as migrações novas (`prisma migrate deploy`) a cada deploy.
    Por isso a `DATABASE_URL` precisa estar configurada antes, senão o build falha.
 3. Fazer um novo deploy (as variáveis `VITE_*` só valem depois de um build novo).
-
-## Próximos passos
-
-- **Alertas em tempo real:** hoje `useActiveAlert` consulta a cada 15 s. Funções serverless não mantêm
-  WebSocket aberto; para tempo real, usar um serviço como Pusher/Ably.
-- **Escalar o alerta** (avisar o próximo da fila depois de X minutos): precisa de um agendador externo
-  (ex.: Upstash QStash), pois a função termina ao responder.
-- **Assinatura digital de receitas:** hoje é simulada. Na prática, usar um provedor ICP-Brasil.
